@@ -1,21 +1,21 @@
 
-import * as THREE from '../../libs/three/three.module.js';
-import { GLTFLoader } from '../../libs/three/jsm/GLTFLoader.js';
-import { DRACOLoader } from '../../libs/three/jsm/DRACOLoader.js';
-import { RGBELoader } from '../../libs/three/jsm/RGBELoader.js';
-import { Stats } from '../../libs/stats.module.js';
-import { LoadingBar } from '../../libs/LoadingBar.js';
-import { VRButton } from '../../libs/VRButton.js';
-import { CanvasUI } from '../../libs/CanvasUI.js';
-import { GazeController } from '../../libs/GazeController.js'
-import { XRControllerModelFactory } from '../../libs/three/jsm/XRControllerModelFactory.js';
+import * as THREE from './libs/three/three.module.js';
+import { GLTFLoader } from './libs/three/jsm/GLTFLoader.js';
+import { DRACOLoader } from './libs/three/jsm/DRACOLoader.js';
+import { RGBELoader } from './libs/three/jsm/RGBELoader.js';
+import { Stats } from './libs/stats.module.js';
+import { LoadingBar } from './libs/LoadingBar.js';
+import { VRButton } from './libs/VRButton.js';
+import { CanvasUI } from './libs/CanvasUI.js';
+import { GazeController } from './libs/GazeController.js'
+import { XRControllerModelFactory } from './libs/three/jsm/XRControllerModelFactory.js';
 
 class App{
 	constructor(){
 		const container = document.createElement( 'div' );
 		document.body.appendChild( container );
 
-		this.assetsPath = '../../assets/';
+		this.assetsPath = './assets/';
         
 		this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 500 );
 		this.camera.position.set( 0, 1.6, 0 );
@@ -74,7 +74,7 @@ class App{
         
         const self = this;
         
-        loader.load( '../../assets/hdr/venice_sunset_1k.hdr', ( texture ) => {
+        loader.load( './assets/hdr/venice_sunset_1k.hdr', ( texture ) => {
           const envMap = pmremGenerator.fromEquirectangular( texture ).texture;
           pmremGenerator.dispose();
 
@@ -95,7 +95,7 @@ class App{
         
 		const loader = new GLTFLoader( ).setPath(this.assetsPath);
         const dracoLoader = new DRACOLoader();
-        dracoLoader.setDecoderPath( '../../libs/three/js/draco/' );
+        dracoLoader.setDecoderPath( './libs/three/js/draco/' );
         loader.setDRACOLoader( dracoLoader );
         
         const self = this;
