@@ -48,8 +48,8 @@ class App{
         this.workingQuaternion = new THREE.Quaternion();
         this.raycaster = new THREE.Raycaster();
         
-        this.stats = new Stats();
-		container.appendChild( this.stats.dom );
+        //this.stats = new Stats();
+		//container.appendChild( this.stats.dom );
         
 		this.loadingBar = new LoadingBar();
 		
@@ -355,7 +355,7 @@ class App{
             this.immersive = this.renderer.xr.isPresenting;
         }
         
-        this.stats.update();
+        //this.stats.update();
 		this.renderer.render(this.scene, this.camera);
 	}
 }
