@@ -31,7 +31,21 @@ class App{
         
 		const ambient = new THREE.HemisphereLight(0xFFFFFF, 0xAAAAAA, 0.8);
 		this.scene.add(ambient);
-			
+
+        let cube1 = new THREE.Mesh(
+            new THREE.BoxBufferGeometry(2, 2, 2),
+            new THREE.MeshLambertMaterial({color:'blue'})
+        );
+        cube1.position.set(0, 1.6, -10);
+        scene.add(cube1);
+
+        let cube2 = new THREE.Mesh(
+            new THREE.BoxBufferGeometry(2, 2, 2),
+            new THREE.MeshLambertMaterial({color:'red'})
+        );
+        cube2.position.set(0, 1.6, 10);
+        scene.add(cube2);
+
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setPixelRatio( window.devicePixelRatio );
 		this.renderer.setSize( window.innerWidth, window.innerHeight );
