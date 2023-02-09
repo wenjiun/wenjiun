@@ -34,7 +34,7 @@ class App{
 
         this.cube = new THREE.Mesh(
             new THREE.BoxBufferGeometry(1, 1, 1),
-            new THREE.MeshLambertMaterial({color:'green'})
+            new THREE.MeshLambertMaterial({color:'red'})
         );
         this.cube.position.set(0, 1.6, 4);
         this.scene.add(this.cube);
@@ -326,8 +326,8 @@ class App{
         const dt = this.clock.getDelta();
         
         // Rotate the cube
-        this.cube.rotation.y = dt;
-        this.cube.rotation.x = dt;   
+        this.cube.rotation.y = timestamp/1000;
+        this.cube.rotation.x = timestamp/1000;   
 
         if (this.renderer.xr.isPresenting){
             let moveGaze = false;
