@@ -7,7 +7,11 @@
     <style>
       h1 {
         color: white;
-        outline: 2px solid black;
+        text-shadow:
+            -1px -1px 0 #000, /* Top-left shadow */
+            1px -1px 0 #000,  /* Top-right shadow */
+            -1px 1px 0 #000,  /* Bottom-left shadow */
+            1px 1px 0 #000;   /* Bottom-right shadow */
       }
       #example-scanning-overlay {
 	display: flex;
