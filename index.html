@@ -5,6 +5,10 @@
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
+      h1 {
+        color: white;
+        outline: 2px solid black;
+      }
       #example-scanning-overlay {
 	display: flex;
 	align-items: center;
@@ -75,7 +79,7 @@
   <body>
     <div id="example-scanning-overlay" class="hidden">
       <div class="inner">
-	<h1>Testing 1 2 3</h1>
+	<h1>What is the name of the station?</h1>
 	<div class="scanline"></div>
       </div>
     </div>
@@ -89,7 +93,6 @@
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-        <h1>Result 1 2 3</h1>
 	<!--<a-plane src="#card" position="0 0 0" height="0.552" width="1" rotation="0 0 0"></a-plane>-->
 	<!--<a-gltf-model rotation="0 0 0 " position="0 0 0.1" scale="0.005 0.005 0.005" src="#avatarModel"
 	  animation="property: position; to: 0 0.1 0.1; dur: 1000; easing: easeInOutQuad; loop: true; dir: alternate"
