@@ -3,9 +3,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      #scanning-overlay {
+      }
+      #scanning-overlay.hidden {
+        display: none;
+      }
+  </style>
   </head>
   <body>
-    <a-scene mindar-image="imageTargetSrc: ./agmospace.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <div id="example-scanning-overlay" class="hidden">
+        <h1>Testing 1 2 3</h1>
+    </div>
+    <a-scene mindar-image="uiScanning: #scanning-overlay; imageTargetSrc: ./agmospace.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
       <a-assets>
         <img id="card" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png" />
         <a-asset-item id="avatarModel" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf"></a-asset-item>
