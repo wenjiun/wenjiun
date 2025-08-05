@@ -81,6 +81,14 @@
 	50% { top: calc(100% - 10px) }
       }
     </style>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        const examplePlane = document.querySelector('#example-plane');
+        examplePlane.addEventListener("click", event => {
+          console.log("plane click");
+        });
+            });
+    </script>
   </head>
   <body>
     <div id="example-scanning-overlay" class="hidden">
@@ -90,15 +98,7 @@
       </div>
     </div>
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        const examplePlane = document.querySelector('#example-plane');
-        // detect click event
-        examplePlane.addEventListener("click", event => {
-          console.log("plane click");
-        });
-            });
-    </script>
+
 
     <a-scene mindar-image="uiScanning: #example-scanning-overlay; imageTargetSrc: ./agmospace.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" xr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
       <a-assets>
