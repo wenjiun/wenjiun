@@ -83,9 +83,14 @@
     </style>
     <script>
       document.addEventListener("DOMContentLoaded", function() {
+        const sceneEl = document.querySelector('a-scene');
+	      let arSystem;
+        sceneEl.addEventListener('loaded', function () {
+	        arSystem = sceneEl.systems["mindar-image-system"];
+	      });
         const examplePlane = document.querySelector('#example-plane');
         examplePlane.addEventListener("click", event => {
-          //window.open("https://wenjiun.github.io/wenjiun/question2.html", "_self");
+          arSystem.stop();
         });
             });
     </script>
