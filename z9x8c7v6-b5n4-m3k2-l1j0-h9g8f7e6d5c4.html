@@ -90,7 +90,8 @@
 	      });
         const examplePlane = document.querySelector('#example-plane');
         examplePlane.addEventListener("click", event => {
-          arSystem.stop();
+          arSystem.pause();
+          examplePlane.style.visibility = 'hidden';
         });
             });
     </script>
