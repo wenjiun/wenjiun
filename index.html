@@ -93,7 +93,6 @@
     <script>
       AFRAME.registerComponent('click-to-next', {
           init: function () {
-            this.display = document.querySelector("#nextplane");
             this.el.addEventListener("click",this.onClick.bind(this));
           },
           onClick:function()
@@ -112,7 +111,7 @@
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <a-entity mindar-image-target="targetIndex: 0">
-      	<a-plane id="nextplane" src="#card" position="0 0 0" height="1" width="1" rotation="0 0 0"></a-plane>
+      	<a-plane src="#card" position="0 0 0" height="1" width="1" rotation="0 0 0" click-to-next></a-plane>
       </a-entity>
     </a-scene>
 
