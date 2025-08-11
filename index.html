@@ -3,52 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Full-Screen Image</title>
-    <!-- Tailwind CSS CDN for easy styling -->
+    <title>Creative Undergraduate Final Year Showcase</title>
+    <!-- Use Inter font from Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /*
-         * This custom CSS is essential for the full-screen effect.
-         * The Tailwind classes are used for the content *on top* of the image.
-         */
         body {
-            /* Remove default browser margins and padding */
-            margin: 0;
-            padding: 0;
-            /* Set the body to take up the full width and height of the viewport */
-            width: 100vw;
-            height: 100vh;
-            /* Set the background image URL */
-            background-image: url('https://wenjiun.github.io/wenjiun/fcm.png');
-            /* Make the image cover the entire body without distortion */
-            background-size: cover;
-            /* Center the image */
-            background-position: center;
-            /* Prevent the image from repeating */
-            background-repeat: no-repeat;
-            /* Optional: Add a dark overlay on the image for better text readability */
-            position: relative;
+            font-family: 'Inter', sans-serif;
         }
-
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0); /* 40% black overlay */
-        }
-        
-        /* Ensure content is on top of the overlay */
-        .content {
-            position: relative;
-            z-index: 10;
+        html {
+            scroll-behavior: smooth;
         }
     </style>
 </head>
-<body class="flex items-center justify-center p-4">
+<body class="bg-gray-900 text-gray-100">
 
+    <!-- Header -->
+    <header class="bg-gray-900 py-4 px-6 md:px-12 fixed w-full z-50 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-white">Showcase '25</a>
+            <nav class="hidden md:block">
+                <ul class="flex space-x-6">
+                    <li><a href="#projects" class="text-gray-300 hover:text-white transition-colors duration-300">Projects</a></li>
+                    <li><a href="#about" class="text-gray-300 hover:text-white transition-colors duration-300">About</a></li>
+                    <li><a href="#exhibition" class="text-gray-300 hover:text-white transition-colors duration-300">Exhibition</a></li>
+                </ul>
+            </nav>
+            <button id="mobile-menu-button" class="md:hidden text-gray-300 hover:text-white focus:outline-none">
+                <!-- Hamburger Icon -->
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </div>
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="hidden md:hidden bg-gray-800 mt-4 rounded-lg shadow-xl">
+            <ul class="flex flex-col space-y-2 p-4">
+                <li><a href="#projects" class="block text-gray-300 hover:text-white transition-colors duration-300">Projects</a></li>
+                <li><a href="#about" class="block text-gray-300 hover:text-white transition-colors duration-300">About</a></li>
+                <li><a href="#exhibition" class="block text-gray-300 hover:text-white transition-colors duration-300">Exhibition</a></li>
+            </ul>
+        </div>
+    </header>
 
+    <main class="pt-20">
+        <!-- Hero Section -->
+        <section class="relative bg-gray-800 h-screen flex items-center justify-center text-center px-6" style="background-image: url('https://placehold.co/1920x1080/1f2937/d1d5db?text=Creative+Showcase'); background-size: cover; background-position: center;">
+            <div class="absolute inset-0 bg-black opacity-60"></div>
+            <div class="z-10 max-w-4xl mx-auto">
+                <h1 class="text-4xl sm:text-5xl lg:text-7xl font-extrabold leading-tight text-white mb-4">
+                    The Future of Creativity is Here.
+                </h1>
+                <p class="text-lg sm:text-xl text-gray-300 mb-8">
+                    Explore the innovative and boundary-pushing projects from our graduating class. Witness the intersection of art and technology.
+                </p>
+                <a href="#projects" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-transform transform hover:scale-105 duration-300">
+                    Explore Projects
+                </a>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section id="projects" class="py-16 md:py-24 px-6 md:px-12">
+            <div class="container mx-auto">
+                <h2 class="text-3xl md:text-5xl font-extrabold text-center mb-12 text-white">Featured Projects</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+
+                    <!-- Project Card 1 -->
+                    <div class="bg-gray-800 rounded-xl shadow-xl overflow-hidden transform hover:scale-105 transition-transform duration-300 cursor-pointer group">
+                        <img src="https://placehold.co/800x600/4a5568/a0aec0?text=Project+1" alt="Project 1" class="w-full h-48 object-cover">
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold text-white mb-2">Sustainable Cityscapes</h3>
+                            <p class="text-sm text-indigo-400 mb-4">Architecture & Urban Planning</p>
+                            <p class="text-gray-400">A modular design for eco-friendly urban living spaces, utilizing recycled materials and vertical farming.</p>
+                        </div>
+                    </div>
+
+                    <!-- Project Card 2 -->
+                    <div class="bg-gray-800 rounded-xl shadow-xl overflow-hidden transform hover:scale-105 transition-transform duration-300 cursor-pointer group">
+                        <img src="https://placehold.co/800x600/2d3748/cbd5e0?text=Project+2" alt="Project 2" class="w-full h-48 object-cover">
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold text-white mb-2">Echoes of the Void</h3>
+                            <p class="text-sm text-indigo-400 mb-4">Interactive Art Installation</p>
+                            <p class="text-gray-400">An interactive sound and light sculpture that responds to human movement and ambient sound.</p>
+                        </div>
+                    </div>
+
+                    <!-- Project Card 3 -->
+                    <div class="bg-gray-800 rounded-xl shadow-xl overflow-hidden transform hover:scale-105 transition-transform duration-300 cursor-pointer group">
+                        <img src="https://placehold.co/800x600/1a202c/e2e8f0?text=Project+3" alt="Project 3" class="w-full h-48 object-cover">
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold text-white mb-2">Neural Network Fashion</h3>
+                            <p class="text-sm text-indigo-400 mb-4">Fashion Design & AI</p>
+                            <p class="text-gray-400">A collection of generative fashion designs created with the help of a deep learning model.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Add more project cards here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="py-16 md:py-24 bg-gray-800 px-6 md:px-12">
+            <div class="container mx-auto text-center max-w-4xl">
+                <h2 class="text-3xl md:text-5xl font-extrabold text-white mb-6">About the Showcase</h2>
+                <p class="text-lg text-gray-400 leading-relaxed">
+                    The Final Year Project Showcase is an annual event celebrating the culmination of our students' hard work and innovation. It provides a platform for them to present their final projects, spanning a wide range of disciplines from graphic design and animation to architecture and digital media. This year, we are proud to host both a digital exhibition for a global audience and a physical event for an immersive, in-person experience.
+                </p>
+            </div>
+        </section>
+
+        <!-- Physical Exhibition Section -->
+        <section id="exhibition" class="py-16 md:py-24 px-6 md:px-12">
+            <div class="container mx-auto text-center max-w-4xl">
+                <h2 class="text-3xl md:text-5xl font-extrabold text-white mb-6">Visit Our Physical Exhibition</h2>
+                <p class="text-lg text-gray-400 mb-8">
+                    Experience the projects firsthand and meet the creators. Join us at our main campus to immerse yourself in a world of creativity and innovation.
+                </p>
+                <div class="bg-gray-800 p-8 rounded-xl shadow-xl inline-block text-left">
+                    <ul class="text-xl space-y-4">
+                        <li class="flex items-center text-gray-300">
+                            <span class="mr-4 text-indigo-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </span>
+                            <strong>Dates:</strong> 15-17 November 2025
+                        </li>
+                        <li class="flex items-center text-gray-300">
+                            <span class="mr-4 text-indigo-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </span>
+                            <strong>Time:</strong> 10:00 AM - 5:00 PM
+                        </li>
+                        <li class="flex items-center text-gray-300">
+                            <span class="mr-4 text-indigo-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </span>
+                            <strong>Location:</strong> Main Campus Exhibition Hall
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-700 py-8 px-6 md:px-12">
+        <div class="container mx-auto text-center text-gray-400">
+            <p>&copy; 2025 Final Year Showcase. All rights reserved.</p>
+            <div class="flex justify-center space-x-4 mt-4">
+                <a href="#" class="hover:text-white transition-colors duration-300">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.258 7.401c-.722.322-1.5.539-2.316.636.83-.5 1.468-1.29 1.77-2.235-.774.456-1.63.792-2.527.972-.731-.77-1.776-1.254-2.924-1.254-2.222 0-4.026 1.797-4.026 4.015 0 .315.035.62.102.913-3.344-.168-6.307-1.776-8.291-4.204-.345.594-.543 1.285-.543 2.023 0 1.393.707 2.624 1.785 3.353-.66-.022-1.285-.203-1.826-.503v.047c0 1.942 1.38 3.562 3.21 3.931-.336.09-.691.137-1.054.137-.258 0-.508-.025-.75-.072.51 1.59 1.996 2.748 3.754 2.78-1.378 1.077-3.123 1.722-5.022 1.722-.327 0-.65-.018-.967-.058 1.784 1.147 3.896 1.815 6.177 1.815 7.41 0 11.455-6.136 11.455-11.442 0-.175-.004-.349-.012-.522.784-.567 1.464-1.272 2.006-2.073z"></path></svg>
+                </a>
+                <a href="#" class="hover:text-white transition-colors duration-300">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.373 0 0 5.373 0 12c0 5.302 3.438 9.799 8.205 11.385.6.11.825-.26.825-.575v-2.025c-3.332.725-4.032-1.605-4.032-1.605-.546-1.385-1.332-1.755-1.332-1.755-1.09-.745.085-.73.085-.73 1.205.085 1.838 1.238 1.838 1.238 1.07 1.838 2.805 1.305 3.49.998.107-.775.418-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.385 1.238-3.225-.125-.3-.538-1.52.12-3.18 0 0 1.002-.325 3.275 1.23.955-.265 1.97-.4 3-.405 1.03.005 2.045.14 3 .405 2.272-1.555 3.275-1.23 3.275-1.23.658 1.66.245 2.88.12 3.18.77.84 1.235 1.915 1.235 3.225 0 4.61-2.802 5.625-5.477 5.92-.42.36-.79.925-.79 1.865v2.75c0 .315.22.69.825.575C19.565 21.798 23 17.302 23 12c0-6.627-5.373-12-12-12z"></path></svg>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+    </script>
 </body>
 </html>
