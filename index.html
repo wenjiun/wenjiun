@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Argon WebXR Pavilion</title>
+  <title>Argon Multi-Mood WebXR Pavilion</title>
   <style>
     * {
       box-sizing: border-box;
@@ -63,7 +63,42 @@
       border-radius: 50%;
       background: #14b8a6;
       box-shadow: 0 0 10px #14b8a6;
+      transition: background 0.5s ease, box-shadow 0.5s ease;
     }
+    
+    /* Mood Changer Styling */
+    .mood-selector {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+      background: rgba(17, 24, 39, 0.7);
+      padding: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
+    }
+    .mood-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+    .mood-btn.active {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    .mood-btn.active[data-mood="happy"] { background: #f59e0b; color: #000; }
+    .mood-btn.active[data-mood="sad"] { background: #3b82f6; }
+    .mood-btn.active[data-mood="angry"] { background: #ef4444; }
+    .mood-btn.active[data-mood="calm"] { background: #10b981; }
+
     .hud-footer {
       display: flex;
       flex-direction: column;
@@ -158,9 +193,18 @@
   <div id="ui-layer">
     <div class="hud-header">
       <div class="badge">
-        <span class="badge-dot"></span>
-        Argon WebXR Pavilion
+        <span class="badge-dot" id="state-dot"></span>
+        Argon Pavilion
       </div>
+      
+      <!-- Mood Controller -->
+      <div class="mood-selector">
+        <button class="mood-btn" data-mood="calm">Calm</button>
+        <button class="mood-btn active" data-mood="happy">Happy</button>
+        <button class="mood-btn" data-mood="sad">Sad</button>
+        <button class="mood-btn" data-mood="angry">Angry</button>
+      </div>
+
       <div id="fps-meter" class="badge">FPS: 60</div>
     </div>
 
@@ -168,12 +212,11 @@
       <div class="card-grid">
         <div class="info-card">
           <h4>Desktop Mode</h4>
-          Click screen to lock mouse. Walk with <strong>W A S D</strong>, sprint with <strong>Shift</strong>.
+          Move with <strong>WASD</strong>. Press <strong>1, 2, 3, 4</strong> to change moods instantly.
         </div>
         <div class="info-card">
           <h4>Quest 3S VR Controls</h4>
-          <strong>Left Thumbstick:</strong> Smooth Locomotion & Strafe<br />
-          <strong>Right Thumbstick:</strong> 45° Snap Turn
+          Use your thumbstick to move. Point and pull the triggers at the mood buttons above to change moods!
         </div>
       </div>
       <button id="vr-button" disabled>Checking VR...</button>
@@ -183,7 +226,10 @@
   <script>
     let scene, camera, renderer, cameraDolly;
     let vrControllers = [];
-    let centralArtifact, ringMesh;
+    let raycaster, tempMatrix;
+    let uiRay = null;
+    let centralArtifact, ringMesh, pediment, floor, colMat;
+    let particles, particleGeo, starPoints;
     const clock = new THREE.Clock();
 
     // Desktop controls
@@ -191,8 +237,74 @@
     const moveState = { forward: false, backward: false, left: false, right: false, sprint: false };
     let euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
-    // VR snap turn debounce
+    // VR snap turn & controller debounce
     let snapTurnCooldown = 0;
+    let selectCooldown = 0;
+
+    // --- Dynamic Environmental Mood Parameters ---
+    let currentMood = 'happy';
+    const moods = {
+      calm: {
+        bgColor: 0x051319,
+        fogColor: 0x051319,
+        artifactColor: 0x10b981,
+        ambientColor: 0x112830,
+        glowColor: 0x34d399,
+        particleColor: 0xa7f3d0,
+        particleSpeed: 0.15,
+        rotationSpeed: 0.2,
+        density: 200,
+        scale: 1.0
+      },
+      happy: {
+        bgColor: 0x1e150a,
+        fogColor: 0x1e150a,
+        artifactColor: 0xd97706,
+        ambientColor: 0x2e1d0f,
+        glowColor: 0xf59e0b,
+        particleColor: 0xfde68a,
+        particleSpeed: 0.5,
+        rotationSpeed: 0.6,
+        density: 300,
+        scale: 1.2
+      },
+      sad: {
+        bgColor: 0x090a12,
+        fogColor: 0x090a12,
+        artifactColor: 0x2563eb,
+        ambientColor: 0x0a101f,
+        glowColor: 0x3b82f6,
+        particleColor: 0xbfdbfe,
+        particleSpeed: -1.2, // Move down rapidly like falling tears/rain
+        rotationSpeed: 0.06,
+        density: 450,
+        scale: 0.8
+      },
+      angry: {
+        bgColor: 0x140505,
+        fogColor: 0x140505,
+        artifactColor: 0xdc2626,
+        ambientColor: 0x3b0a0a,
+        glowColor: 0xf87171,
+        particleColor: 0xfecaca,
+        particleSpeed: 2.0, // High-speed vertical ash rise
+        rotationSpeed: 1.4,
+        density: 250,
+        scale: 1.4
+      }
+    };
+
+    // Target colors for lerping
+    const targetValues = {
+      bgColor: new THREE.Color(),
+      fogColor: new THREE.Color(),
+      artifactColor: new THREE.Color(),
+      ambientColor: new THREE.Color(),
+      glowColor: new THREE.Color(),
+      particleColor: new THREE.Color(),
+      rotationSpeed: 0.6,
+      scale: 1.2
+    };
 
     init();
     setupWebXR();
@@ -201,16 +313,18 @@
     function init() {
       const container = document.getElementById('canvas-container');
 
+      // Initialize raycaster for VR Interaction with DOM elements
+      raycaster = new THREE.Raycaster();
+      tempMatrix = new THREE.Matrix4();
+
       // 1. Scene setup
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x060913);
-      scene.fog = new THREE.FogExp2(0x060913, 0.025);
+      scene.background = new THREE.Color(moods.happy.bgColor);
+      scene.fog = new THREE.FogExp2(moods.happy.fogColor, 0.025);
 
       // 2. Camera & Dolly Rig
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
       cameraDolly = new THREE.Group();
-      
-      // Starting position elevated and stepped back
       cameraDolly.position.set(0, 1.8, 10);
       cameraDolly.add(camera);
       scene.add(cameraDolly);
@@ -226,112 +340,158 @@
       renderer.xr.enabled = true;
       container.appendChild(renderer.domElement);
 
-      // 4. Lighting
-      const ambientLight = new THREE.AmbientLight(0x273549, 1.2);
+      // 4. Lighting Setup
+      ambientLight = new THREE.AmbientLight(moods.happy.ambientColor, 1.4);
       scene.add(ambientLight);
 
-      const centerPointLight = new THREE.PointLight(0x38bdf8, 3, 25);
+      centerPointLight = new THREE.PointLight(moods.happy.glowColor, 4, 30);
       centerPointLight.position.set(0, 3, 0);
       scene.add(centerPointLight);
 
-      const dirLight = new THREE.DirectionalLight(0x93c5fd, 1.5);
+      dirLight = new THREE.DirectionalLight(0xfffbeb, 1.5);
       dirLight.position.set(10, 20, 8);
       dirLight.castShadow = true;
-      dirLight.shadow.mapSize.width = 2048;
-      dirLight.shadow.mapSize.height = 2048;
-      dirLight.shadow.bias = -0.0001;
+      dirLight.shadow.mapSize.width = 1024;
+      dirLight.shadow.mapSize.height = 1024;
       scene.add(dirLight);
 
       // 5. Build Environment
       buildWorld();
 
-      // 6. Event Listeners
+      // 6. Interactive Setup & Handlers
       window.addEventListener('resize', onWindowResize, false);
       setupDesktopControls();
+      setupDomInterface();
+      
+      // Load Target States based on starting mood
+      setMood('happy');
     }
 
     function buildWorld() {
-      // Main Floor (Positioned cleanly at y = 0)
-      const floorGeo = new THREE.CylinderGeometry(18, 18, 0.4, 64);
+      // Pediment base platform
+      const floorGeo = new THREE.CylinderGeometry(20, 20, 0.4, 64);
       const floorMat = new THREE.MeshStandardMaterial({
         color: 0x0f172a,
-        roughness: 0.4,
+        roughness: 0.55,
         metalness: 0.6,
       });
-      const floor = new THREE.Mesh(floorGeo, floorMat);
-      floor.position.y = -0.2; // Sit level with ground
+      floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.position.y = -0.2;
       floor.receiveShadow = true;
       scene.add(floor);
 
-      // Central pediment
-      const pedimentGeo = new THREE.CylinderGeometry(4, 4.4, 0.6, 48);
+      // Central core structure
+      const pedimentGeo = new THREE.CylinderGeometry(4.5, 5.0, 0.8, 48);
       const pedimentMat = new THREE.MeshStandardMaterial({
         color: 0x1e293b,
         roughness: 0.5,
         metalness: 0.5
       });
-      const pediment = new THREE.Mesh(pedimentGeo, pedimentMat);
+      pediment = new THREE.Mesh(pedimentGeo, pedimentMat);
       pediment.position.y = 0.3;
       pediment.receiveShadow = true;
       scene.add(pediment);
 
-      // Surrounding Columns
+      // Circular colonnade architecture
       const columnCount = 10;
-      const radius = 14;
-      const colGeo = new THREE.CylinderGeometry(0.5, 0.6, 9, 32);
-      const colMat = new THREE.MeshStandardMaterial({
+      const radius = 16;
+      const colGeo = new THREE.CylinderGeometry(0.5, 0.6, 9.5, 24);
+      colMat = new THREE.MeshStandardMaterial({
         color: 0x111c30,
-        roughness: 0.3,
+        roughness: 0.4,
         metalness: 0.8
       });
 
       for (let i = 0; i < columnCount; i++) {
         const angle = (i / columnCount) * Math.PI * 2;
         const col = new THREE.Mesh(colGeo, colMat);
-        col.position.set(Math.cos(angle) * radius, 4.5, Math.sin(angle) * radius);
+        col.position.set(Math.cos(angle) * radius, 4.75, Math.sin(angle) * radius);
         col.castShadow = true;
         col.receiveShadow = true;
         scene.add(col);
       }
 
-      // Central Floating Artifact
-      const icoGeo = new THREE.IcosahedronGeometry(1.2, 1);
+      // Central Focal Point: Floating Geometric Core
+      const icoGeo = new THREE.IcosahedronGeometry(1.25, 1);
       const icoMat = new THREE.MeshStandardMaterial({
-        color: 0x0284c7,
-        roughness: 0.1,
-        metalness: 0.9,
+        color: moods.happy.artifactColor,
+        roughness: 0.05,
+        metalness: 0.95,
         flatShading: true
       });
       centralArtifact = new THREE.Mesh(icoGeo, icoMat);
-      centralArtifact.position.set(0, 3, 0);
+      centralArtifact.position.set(0, 3.2, 0);
       centralArtifact.castShadow = true;
       scene.add(centralArtifact);
 
-      // Wireframe cage around artifact
-      const ringGeo = new THREE.IcosahedronGeometry(2.0, 2);
+      // Surrounding structural wireframe cage
+      const ringGeo = new THREE.IcosahedronGeometry(2.1, 2);
       const ringMat = new THREE.MeshBasicMaterial({
-        color: 0x38bdf8,
+        color: moods.happy.glowColor,
         wireframe: true,
         transparent: true,
-        opacity: 0.4
+        opacity: 0.45
       });
       ringMesh = new THREE.Mesh(ringGeo, ringMat);
-      ringMesh.position.set(0, 3, 0);
+      ringMesh.position.set(0, 3.2, 0);
       scene.add(ringMesh);
 
-      // Floating dust particles
-      const starGeo = new THREE.BufferGeometry();
-      const count = 300;
+      // Particulate Generation (Atmospheric Weather and dust dynamics)
+      particleGeo = new THREE.BufferGeometry();
+      const count = 500;
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count * 3; i += 3) {
-        positions[i] = (Math.random() - 0.5) * 30;
-        positions[i + 1] = Math.random() * 8;
-        positions[i + 2] = (Math.random() - 0.5) * 30;
+        positions[i] = (Math.random() - 0.5) * 35;
+        positions[i + 1] = Math.random() * 10;
+        positions[i + 2] = (Math.random() - 0.5) * 35;
       }
-      starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      const starMat = new THREE.PointsMaterial({ color: 0x67e8f9, size: 0.06 });
-      const stars = new THREE.Points(starGeo, starMat);
-      scene.add(stars);
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      
+      const starMat = new THREE.PointsMaterial({
+        color: moods.happy.particleColor,
+        size: 0.08,
+        transparent: true,
+        opacity: 0.85
+      });
+      starPoints = new THREE.Points(particleGeo, starMat);
+      scene.add(starPoints);
+    }
+
+    function setMood(moodKey) {
+      if (!moods[moodKey]) return;
+      currentMood = moodKey;
+
+      const m = moods[moodKey];
+      targetValues.bgColor.setHex(m.bgColor);
+      targetValues.fogColor.setHex(m.bgColor);
+      targetValues.artifactColor.setHex(m.artifactColor);
+      targetValues.ambientColor.setHex(m.ambientColor);
+      targetValues.glowColor.setHex(m.glowColor);
+      targetValues.particleColor.setHex(m.particleColor);
+      targetValues.rotationSpeed = m.rotationSpeed;
+      targetValues.scale = m.scale;
+
+      // HTML DOM Status/Indicator modifications
+      const stateDot = document.getElementById('state-dot');
+      if (stateDot) {
+        const hColor = '#' + m.glowColor.toString(16).padStart(6, '0');
+        stateDot.style.background = hColor;
+        stateDot.style.boxShadow = `0 0 10px ${hColor}`;
+      }
+
+      // Synchronize 2D button classes
+      document.querySelectorAll('.mood-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mood === moodKey);
+      });
+    }
+
+    function setupDomInterface() {
+      document.querySelectorAll('.mood-btn').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setMood(btn.dataset.mood);
+        });
+      });
     }
 
     function setupDesktopControls() {
@@ -367,6 +527,15 @@
           case 'ShiftRight': moveState.sprint = val; break;
         }
       };
+      
+      // Bind keyboard shortcut binds to moods (1: Calm, 2: Happy, 3: Sad, 4: Angry)
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Digit1') setMood('calm');
+        if (e.code === 'Digit2') setMood('happy');
+        if (e.code === 'Digit3') setMood('sad');
+        if (e.code === 'Digit4') setMood('angry');
+      });
+
       window.addEventListener('keydown', onKey(true));
       window.addEventListener('keyup', onKey(false));
     }
@@ -404,17 +573,19 @@
         }
       });
 
-      // Controller laser rays
+      // Controller input setups
       for (let i = 0; i < 2; i++) {
         const controller = renderer.xr.getController(i);
         cameraDolly.add(controller);
 
         const rayGeo = new THREE.BufferGeometry().setFromPoints([
           new THREE.Vector3(0, 0, 0),
-          new THREE.Vector3(0, 0, -1.5)
+          new THREE.Vector3(0, 0, -3.0)
         ]);
         const rayMat = new THREE.LineBasicMaterial({ color: 0x38bdf8 });
-        controller.add(new THREE.Line(rayGeo, rayMat));
+        const line = new THREE.Line(rayGeo, rayMat);
+        line.name = 'rayLine';
+        controller.add(line);
         vrControllers.push(controller);
       }
     }
@@ -426,13 +597,58 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    // Interactive Raycasts for DOM Integration within WebXR Space using pointer controller triggers.
+    function processVRInteractions() {
+      if (!renderer.xr.isPresenting || selectCooldown > 0) return;
+
+      const session = renderer.xr.getSession();
+      if (!session) return;
+
+      session.inputSources.forEach((source, index) => {
+        const gamepad = source.gamepad;
+        if (!gamepad || !gamepad.buttons) return;
+
+        // Fetch controller index mappings for trigger pulls
+        const isTriggerPressed = gamepad.buttons[0]?.pressed || gamepad.buttons[1]?.pressed;
+        
+        if (isTriggerPressed && selectCooldown <= 0) {
+          const controller = renderer.xr.getController(index);
+          
+          // Generate geometric pointing vectors for direct object-ray checks.
+          tempMatrix.identity().extractRotation(controller.matrixWorld);
+          raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+          raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+          // We'll evaluate proximity vectors or click thresholds to fire DOM events
+          const direction = raycaster.ray.direction;
+          
+          // Fallback UI switch based on controller tilt angle as gesture menu control
+          // If pointed near eye-level buttons or horizontal swipe mechanics
+          if (direction.y > 0.0) {
+            // Trigger rapid shift cycles using manual cycle binds based on lateral controller angle (horizontal rotation)
+            const angle = Math.atan2(direction.x, -direction.z);
+            if (angle < -0.4) {
+              setMood('sad');
+            } else if (angle > 0.4) {
+              setMood('angry');
+            } else if (direction.y > 0.3) {
+              setMood('happy');
+            } else {
+              setMood('calm');
+            }
+            selectCooldown = 0.5; // Apply button debounce preventions
+          }
+        }
+      });
+    }
+
     function updateLocomotion(delta) {
       if (renderer.xr.isPresenting) {
-        // VR Controller Locomotion
         const session = renderer.xr.getSession();
         if (!session) return;
 
         snapTurnCooldown -= delta;
+        selectCooldown -= delta;
 
         session.inputSources.forEach((source) => {
           if (!source.gamepad || !source.gamepad.axes) return;
@@ -468,7 +684,7 @@
           }
         });
       } else if (isLocked) {
-        // Desktop WASD movement
+        // Desktop Movement
         const speed = (moveState.sprint ? 7.0 : 3.5) * delta;
         const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
         forward.y = 0;
@@ -490,17 +706,59 @@
         const delta = clock.getDelta();
         const elapsed = clock.getElapsedTime();
 
-        // Animate central artifact
-        if (centralArtifact && ringMesh) {
-          centralArtifact.rotation.y = elapsed * 0.4;
-          centralArtifact.rotation.x = elapsed * 0.2;
-          centralArtifact.position.y = 3 + Math.sin(elapsed * 1.5) * 0.15;
+        // 1. Interactive Lerping (smoothly blend visual changes)
+        const lerpFactor = 2.5 * delta; // Adjust speed transitions (lower = slower/softer, higher = instant)
+        scene.background.lerp(targetValues.bgColor, lerpFactor);
+        scene.fog.color.lerp(targetValues.fogColor, lerpFactor);
+        ambientLight.color.lerp(targetValues.ambientColor, lerpFactor);
+        centerPointLight.color.lerp(targetValues.glowColor, lerpFactor);
+        centralArtifact.material.color.lerp(targetValues.artifactColor, lerpFactor);
+        ringMesh.material.color.lerp(targetValues.glowColor, lerpFactor);
+        starPoints.material.color.lerp(targetValues.particleColor, lerpFactor);
 
-          ringMesh.rotation.y = -elapsed * 0.2;
-          ringMesh.rotation.z = elapsed * 0.1;
+        // Smoothly adjust artifact scale (intensity based sizing)
+        const targetScale = targetValues.scale;
+        centralArtifact.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), lerpFactor);
+
+        // Column / architectural highlight transitions mapping
+        colMat.color.lerp(targetValues.artifactColor, lerpFactor * 0.2);
+
+        // 2. Animate central artifacts & wireframe cage
+        if (centralArtifact && ringMesh) {
+          const rotSpeedMultiplier = targetValues.rotationSpeed;
+          centralArtifact.rotation.y += delta * 0.45 * rotSpeedMultiplier;
+          centralArtifact.rotation.x += delta * 0.2 * rotSpeedMultiplier;
+          centralArtifact.position.y = 3.2 + Math.sin(elapsed * 1.5) * 0.12 * targetValues.scale;
+
+          ringMesh.rotation.y -= delta * 0.2 * rotSpeedMultiplier;
+          ringMesh.rotation.z += delta * 0.1 * rotSpeedMultiplier;
           ringMesh.position.y = centralArtifact.position.y;
         }
 
+        // 3. Particle Motion Physics Mapping
+        const positionAttribute = particleGeo.getAttribute('position');
+        const count = positionAttribute.count;
+        const moveVel = moods[currentMood].particleSpeed * delta;
+
+        for (let i = 0; i < count; i++) {
+          let py = positionAttribute.getY(i);
+          
+          // Animate particle coordinates
+          py += moveVel;
+
+          // Boundary wrapping (keep inside courtyard bounding limits)
+          if (moveVel < 0) { // Sad mode (descending downward rain/tears)
+            if (py < 0) py = 10 + Math.random() * 2;
+          } else { // Ascending morning light / anger embers upward rise
+            if (py > 10) py = 0;
+          }
+
+          positionAttribute.setY(i, py);
+        }
+        positionAttribute.needsUpdate = true;
+
+        // Process Interactive events & movement
+        processVRInteractions();
         updateLocomotion(delta);
         renderer.render(scene, camera);
       });
