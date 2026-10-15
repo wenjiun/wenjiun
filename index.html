@@ -235,4 +235,276 @@
       scene.add(centerPointLight);
 
       const dirLight = new THREE.DirectionalLight(0x93c5fd, 1.5);
-      dir
+      dirLight.position.set(10, 20, 8);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.bias = -0.0001;
+      scene.add(dirLight);
+
+      // 5. Build Environment
+      buildWorld();
+
+      // 6. Event Listeners
+      window.addEventListener('resize', onWindowResize, false);
+      setupDesktopControls();
+    }
+
+    function buildWorld() {
+      // Main Floor (Positioned cleanly at y = 0)
+      const floorGeo = new THREE.CylinderGeometry(18, 18, 0.4, 64);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.4,
+        metalness: 0.6,
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.position.y = -0.2; // Sit level with ground
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      // Central pediment
+      const pedimentGeo = new THREE.CylinderGeometry(4, 4.4, 0.6, 48);
+      const pedimentMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        roughness: 0.5,
+        metalness: 0.5
+      });
+      const pediment = new THREE.Mesh(pedimentGeo, pedimentMat);
+      pediment.position.y = 0.3;
+      pediment.receiveShadow = true;
+      scene.add(pediment);
+
+      // Surrounding Columns
+      const columnCount = 10;
+      const radius = 14;
+      const colGeo = new THREE.CylinderGeometry(0.5, 0.6, 9, 32);
+      const colMat = new THREE.MeshStandardMaterial({
+        color: 0x111c30,
+        roughness: 0.3,
+        metalness: 0.8
+      });
+
+      for (let i = 0; i < columnCount; i++) {
+        const angle = (i / columnCount) * Math.PI * 2;
+        const col = new THREE.Mesh(colGeo, colMat);
+        col.position.set(Math.cos(angle) * radius, 4.5, Math.sin(angle) * radius);
+        col.castShadow = true;
+        col.receiveShadow = true;
+        scene.add(col);
+      }
+
+      // Central Floating Artifact
+      const icoGeo = new THREE.IcosahedronGeometry(1.2, 1);
+      const icoMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        roughness: 0.1,
+        metalness: 0.9,
+        flatShading: true
+      });
+      centralArtifact = new THREE.Mesh(icoGeo, icoMat);
+      centralArtifact.position.set(0, 3, 0);
+      centralArtifact.castShadow = true;
+      scene.add(centralArtifact);
+
+      // Wireframe cage around artifact
+      const ringGeo = new THREE.IcosahedronGeometry(2.0, 2);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.4
+      });
+      ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.position.set(0, 3, 0);
+      scene.add(ringMesh);
+
+      // Floating dust particles
+      const starGeo = new THREE.BufferGeometry();
+      const count = 300;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 30;
+        positions[i + 1] = Math.random() * 8;
+        positions[i + 2] = (Math.random() - 0.5) * 30;
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const starMat = new THREE.PointsMaterial({ color: 0x67e8f9, size: 0.06 });
+      const stars = new THREE.Points(starGeo, starMat);
+      scene.add(stars);
+    }
+
+    function setupDesktopControls() {
+      const blocker = document.getElementById('blocker');
+
+      document.body.addEventListener('click', () => {
+        if (!renderer.xr.isPresenting && !isLocked) {
+          document.body.requestPointerLock();
+        }
+      });
+
+      document.addEventListener('pointerlockchange', () => {
+        isLocked = document.pointerLockElement === document.body;
+        blocker.style.display = isLocked ? 'none' : 'flex';
+      });
+
+      document.addEventListener('mousemove', (event) => {
+        if (!isLocked || renderer.xr.isPresenting) return;
+        euler.setFromQuaternion(camera.quaternion);
+        euler.y -= event.movementX * 0.0022;
+        euler.x -= event.movementY * 0.0022;
+        euler.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, euler.x));
+        camera.quaternion.setFromEuler(euler);
+      });
+
+      const onKey = (val) => (e) => {
+        switch (e.code) {
+          case 'KeyW': moveState.forward = val; break;
+          case 'KeyS': moveState.backward = val; break;
+          case 'KeyA': moveState.left = val; break;
+          case 'KeyD': moveState.right = val; break;
+          case 'ShiftLeft':
+          case 'ShiftRight': moveState.sprint = val; break;
+        }
+      };
+      window.addEventListener('keydown', onKey(true));
+      window.addEventListener('keyup', onKey(false));
+    }
+
+    function setupWebXR() {
+      const btn = document.getElementById('vr-button');
+
+      if (!navigator.xr) {
+        btn.textContent = 'VR NOT SUPPORTED';
+        return;
+      }
+
+      navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+        if (supported) {
+          btn.disabled = false;
+          btn.textContent = 'ENTER VR';
+
+          btn.addEventListener('click', async () => {
+            if (!renderer.xr.isPresenting) {
+              const session = await navigator.xr.requestSession('immersive-vr', {
+                optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+              });
+              renderer.xr.setSession(session);
+              btn.textContent = 'EXIT VR';
+
+              session.addEventListener('end', () => {
+                btn.textContent = 'ENTER VR';
+              });
+            } else {
+              renderer.xr.getSession().end();
+            }
+          });
+        } else {
+          btn.textContent = 'VR NOT SUPPORTED';
+        }
+      });
+
+      // Controller laser rays
+      for (let i = 0; i < 2; i++) {
+        const controller = renderer.xr.getController(i);
+        cameraDolly.add(controller);
+
+        const rayGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0, 0, -1.5)
+        ]);
+        const rayMat = new THREE.LineBasicMaterial({ color: 0x38bdf8 });
+        controller.add(new THREE.Line(rayGeo, rayMat));
+        vrControllers.push(controller);
+      }
+    }
+
+    function onWindowResize() {
+      if (!camera || !renderer) return;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function updateLocomotion(delta) {
+      if (renderer.xr.isPresenting) {
+        // VR Controller Locomotion
+        const session = renderer.xr.getSession();
+        if (!session) return;
+
+        snapTurnCooldown -= delta;
+
+        session.inputSources.forEach((source) => {
+          if (!source.gamepad || !source.gamepad.axes) return;
+
+          const axes = source.gamepad.axes;
+          const xAxis = axes[2] !== undefined ? axes[2] : axes[0];
+          const yAxis = axes[3] !== undefined ? axes[3] : axes[1];
+
+          // Left Hand: Smooth Walk
+          if (source.handedness === 'left') {
+            if (Math.hypot(xAxis, yAxis) > 0.15) {
+              const speed = 3.5 * delta;
+              const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+              forward.y = 0;
+              forward.normalize();
+
+              const side = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+              side.y = 0;
+              side.normalize();
+
+              cameraDolly.position.addScaledVector(forward, -yAxis * speed);
+              cameraDolly.position.addScaledVector(side, xAxis * speed);
+            }
+          }
+
+          // Right Hand: 45° Snap Turn
+          if (source.handedness === 'right') {
+            if (Math.abs(xAxis) > 0.6 && snapTurnCooldown <= 0) {
+              const angle = xAxis > 0 ? -Math.PI / 4 : Math.PI / 4;
+              cameraDolly.rotateY(angle);
+              snapTurnCooldown = 0.35;
+            }
+          }
+        });
+      } else if (isLocked) {
+        // Desktop WASD movement
+        const speed = (moveState.sprint ? 7.0 : 3.5) * delta;
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        forward.y = 0;
+        forward.normalize();
+
+        const side = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+        side.y = 0;
+        side.normalize();
+
+        if (moveState.forward) cameraDolly.position.addScaledVector(forward, speed);
+        if (moveState.backward) cameraDolly.position.addScaledVector(forward, -speed);
+        if (moveState.left) cameraDolly.position.addScaledVector(side, -speed);
+        if (moveState.right) cameraDolly.position.addScaledVector(side, speed);
+      }
+    }
+
+    function animate() {
+      renderer.setAnimationLoop(() => {
+        const delta = clock.getDelta();
+        const elapsed = clock.getElapsedTime();
+
+        // Animate central artifact
+        if (centralArtifact && ringMesh) {
+          centralArtifact.rotation.y = elapsed * 0.4;
+          centralArtifact.rotation.x = elapsed * 0.2;
+          centralArtifact.position.y = 3 + Math.sin(elapsed * 1.5) * 0.15;
+
+          ringMesh.rotation.y = -elapsed * 0.2;
+          ringMesh.rotation.z = elapsed * 0.1;
+          ringMesh.position.y = centralArtifact.position.y;
+        }
+
+        updateLocomotion(delta);
+        renderer.render(scene, camera);
+      });
+    }
+  </script>
+</body>
+</html>
