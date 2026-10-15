@@ -4,17 +4,2716 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Urban House WebXR Architectural Tour</title>
-    <meta name="description" content="Single-page Three.js WebXR VR architectural walkthrough and GLB model inspector with real-world 1:1 meter scaling, VR controller teleportation, thumbstick locomotion, and desktop WASD controls." />
+    <meta
+      name="description"
+      content="Standalone zero-build Three.js WebXR VR architectural walkthrough and GLB model inspector with real-world 1:1 meter scaling, VR controller teleportation, thumbstick locomotion, and desktop WASD controls."
+    />
     <meta property="og:title" content="Urban House WebXR Architectural Tour" />
-    <meta property="og:description" content="Single-page Three.js WebXR VR architectural walkthrough and GLB model inspector with real-world 1:1 meter scaling, VR controller teleportation, thumbstick locomotion, and desktop WASD controls." />
+    <meta
+      property="og:description"
+      content="Standalone zero-build Three.js WebXR VR architectural walkthrough and GLB model inspector with real-world 1:1 meter scaling, VR controller teleportation, thumbstick locomotion, and desktop WASD controls."
+    />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Native ES Module Import Map for Three.js r170 -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <style>
+      :root {
+        --bg-panel: rgba(12, 13, 16, 0.92);
+        --bg-card: rgba(24, 26, 32, 0.9);
+        --bg-input: rgba(17, 19, 24, 0.95);
+        --border-subtle: rgba(255, 255, 255, 0.12);
+        --border-faint: rgba(255, 255, 255, 0.08);
+        --accent: #f59e0b;
+        --accent-hover: #fbbf24;
+        --text-main: #f3f4f6;
+        --text-muted: #9ca3af;
+        --text-dim: #6b7280;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #0a0a0c;
+        color: var(--text-main);
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        user-select: none;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+        font-variant-numeric: tabular-nums;
+      }
+
+      #canvas-container {
+        width: 100vw;
+        height: 100vh;
+        cursor: grab;
+      }
+
+      #canvas-container:active {
+        cursor: grabbing;
+      }
+
+      /* Full-window Drag-and-Drop Overlay */
+      #drop-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(10, 10, 12, 0.86);
+        border: 4px dashed var(--accent);
+        pointer-events: none;
+      }
+
+      #drop-overlay.active {
+        display: flex;
+      }
+
+      .drop-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 28px 36px;
+        border-radius: 16px;
+        background: #14161b;
+        border: 1px solid var(--border-subtle);
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+        text-align: center;
+      }
+
+      /* Floating Top-Left Inspector Panel */
+      #inspector-panel {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 30;
+        width: 380px;
+        max-width: calc(100vw - 32px);
+        background: var(--bg-panel);
+        border: 1px solid var(--border-subtle);
+        border-radius: 14px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.55);
+        color: var(--text-main);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .panel-title {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .panel-subtitle {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      .icon-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--text-muted);
+        padding: 6px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 140ms ease;
+      }
+
+      .icon-btn:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      #panel-body {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+      }
+
+      #panel-body.collapsed {
+        display: none;
+      }
+
+      .section-block {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        font-weight: 600;
+        color: #e5e7eb;
+      }
+
+      .divider {
+        border: none;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .btn-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-primary {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 9px 12px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #0a0a0c;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 140ms ease;
+      }
+
+      .btn-primary:hover {
+        background: var(--accent-hover);
+      }
+
+      .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 11px;
+        border-radius: 8px;
+        background: #1f222a;
+        color: #e5e7eb;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid var(--border-subtle);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 140ms ease;
+      }
+
+      .btn-secondary:hover {
+        background: #2b2f3a;
+        color: #ffffff;
+      }
+
+      .btn-secondary.active-toggle {
+        background: rgba(245, 158, 11, 0.18);
+        border-color: rgba(245, 158, 11, 0.65);
+        color: #fde68a;
+      }
+
+      .url-form {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .url-input {
+        flex: 1;
+        min-width: 0;
+        padding: 7px 10px;
+        border-radius: 8px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        color: #ffffff;
+        font-size: 12px;
+        outline: none;
+      }
+
+      .url-input:focus {
+        border-color: var(--accent);
+      }
+
+      /* Status Box */
+      .status-box {
+        padding: 9px 11px;
+        border-radius: 8px;
+        font-size: 11.5px;
+        line-height: 1.45;
+        border: 1px solid var(--border-faint);
+        background: var(--bg-card);
+        color: #d1d5db;
+      }
+
+      .status-box.success {
+        background: rgba(6, 78, 59, 0.45);
+        border-color: rgba(16, 185, 129, 0.35);
+        color: #a7f3d0;
+      }
+
+      .status-box.error {
+        background: rgba(127, 29, 29, 0.5);
+        border-color: rgba(239, 68, 68, 0.4);
+        color: #fecaca;
+      }
+
+      .progress-track {
+        margin-top: 6px;
+        width: 100%;
+        height: 5px;
+        background: #1f2937;
+        border-radius: 99px;
+        overflow: hidden;
+        display: none;
+      }
+
+      .progress-bar {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        transition: width 120ms ease;
+      }
+
+      /* Range Sliders */
+      .slider-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .slider-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #d1d5db;
+      }
+
+      .slider-val {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      input[type='range'] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      input[type='range']::-webkit-slider-runnable-track {
+        height: 6px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      input[type='range']::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        margin-top: -5px;
+        background-color: var(--accent);
+        height: 16px;
+        width: 16px;
+        border-radius: 50%;
+        border: 2px solid #fffbeb;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+        transition: transform 140ms ease, background-color 140ms ease;
+      }
+
+      input[type='range']::-webkit-slider-thumb:hover {
+        transform: scale(1.14);
+        background-color: var(--accent-hover);
+      }
+
+      /* Metrics Card */
+      .metrics-card {
+        padding: 9px 11px;
+        border-radius: 8px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-faint);
+        font-size: 11.5px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .metrics-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--text-muted);
+      }
+
+      .viewpoint-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+
+      .vp-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #16181f;
+        border: 1px solid var(--border-faint);
+        color: #d1d5db;
+        font-family: inherit;
+        font-size: 11.5px;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: all 140ms ease;
+      }
+
+      .vp-btn:hover {
+        background: #222631;
+        color: #ffffff;
+      }
+
+      .vp-btn.active {
+        background: rgba(245, 158, 11, 0.18);
+        border-color: rgba(245, 158, 11, 0.65);
+        color: #fde68a;
+      }
+
+      .help-card {
+        padding: 9px 11px;
+        border-radius: 8px;
+        background: rgba(20, 22, 28, 0.78);
+        border: 1px solid var(--border-faint);
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--text-muted);
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .help-card strong {
+        color: #e5e7eb;
+      }
+
+      /* Bottom-Right VR & Telemetry Bar */
+      #vr-dock {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 14px;
+        border-radius: 12px;
+        background: var(--bg-panel);
+        border: 1px solid var(--border-subtle);
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+        font-size: 12px;
+        color: #d1d5db;
+      }
+
+      .dock-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-right: 10px;
+        border-right: 1px solid var(--border-subtle);
+      }
+
+      @media (max-width: 640px) {
+        .dock-info {
+          display: none;
+        }
+      }
+    </style>
   </head>
-  <body class="bg-neutral-950 text-neutral-100 antialiased selection:bg-amber-500/30 selection:text-amber-200 overflow-hidden">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+  <body>
+    <!-- WebGL / WebXR Viewport Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Full-Window Drag-and-Drop Overlay -->
+    <div id="drop-overlay">
+      <div class="drop-card">
+        <div style="font-size: 20px; font-weight: 700; color: #ffffff">
+          Drop .GLB / .GLTF File Anywhere to Load
+        </div>
+        <div style="font-size: 13px; color: #9ca3af">
+          Centers on X/Z, aligns floor to y = 0, and scales to real-world meters
+        </div>
+      </div>
+    </div>
+
+    <!-- Top-Left Floating Architectural Inspector & Loader Panel -->
+    <aside id="inspector-panel">
+      <div class="panel-header">
+        <div style="min-width: 0">
+          <div class="panel-title">Urban House WebXR Tour</div>
+          <div class="panel-subtitle">1 Unit = 1.0 Meter · Eye Height 1.60m</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px">
+          <button
+            id="btn-collapse"
+            type="button"
+            class="icon-btn"
+            title="Collapse / Expand Panel"
+          >
+            ▾
+          </button>
+        </div>
+      </div>
+
+      <div id="panel-body">
+        <!-- 01. GLB File Uploader, Drag & Drop, URL Loader -->
+        <div class="section-block">
+          <div class="section-header">
+            <span>01. Model Loader (.GLB / .GLTF)</span>
+            <span class="mono" style="font-size: 11px; color: var(--text-muted)">Draco 1.5.7</span>
+          </div>
+
+          <input id="file-input" type="file" accept=".glb,.gltf" style="display: none" />
+
+          <div class="btn-row">
+            <button id="btn-upload" type="button" class="btn-primary">
+              <span>Upload Local .GLB File</span>
+            </button>
+            <button
+              id="btn-reset-proc"
+              type="button"
+              class="btn-secondary"
+              style="display: none"
+              title="Restore Procedural Urban House"
+            >
+              Reset Lot
+            </button>
+          </div>
+
+          <form id="url-form" class="url-form">
+            <input
+              id="url-input"
+              type="text"
+              value="./urban_house.glb"
+              placeholder="./urban_house.glb or https://..."
+              class="url-input mono"
+            />
+            <button type="submit" class="btn-secondary">Load URL</button>
+          </form>
+
+          <div id="status-box" class="status-box">
+            <div id="status-text">
+              Procedural 3D Urban House active (1 unit = 1m). Upload or drop a .GLB to inspect.
+            </div>
+            <div id="progress-track" class="progress-track">
+              <div id="progress-bar" class="progress-bar"></div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- 02. Real-World Scale, Floor Alignment & Material Mode -->
+        <div class="section-block">
+          <div class="section-header">
+            <span>02. Scale &amp; Floor Alignment</span>
+            <div style="display: flex; align-items: center; gap: 6px">
+              <button
+                id="btn-rotate-model"
+                type="button"
+                class="btn-secondary mono"
+                style="padding: 3px 8px; font-size: 11px"
+                title="Rotate Model 90° around Y"
+              >
+                Rot: 0°
+              </button>
+              <button
+                id="btn-reset-scale"
+                type="button"
+                style="
+                  background: none;
+                  border: none;
+                  color: var(--accent);
+                  font-size: 11.5px;
+                  font-weight: 600;
+                  cursor: pointer;
+                "
+              >
+                Reset 40m
+              </button>
+            </div>
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <label for="slider-lot-width">Lot Width (10m - 100m)</label>
+              <span id="val-lot-width" class="slider-val mono">40 m</span>
+            </div>
+            <input id="slider-lot-width" type="range" min="10" max="100" step="1" value="40" />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <label for="slider-floor-offset">Floor Y-Offset (-5m to +5m)</label>
+              <span id="val-floor-offset" class="slider-val mono">+0.00 m</span>
+            </div>
+            <input
+              id="slider-floor-offset"
+              type="range"
+              min="-5"
+              max="5"
+              step="0.05"
+              value="0"
+            />
+          </div>
+
+          <div class="slider-group">
+            <div class="slider-label-row">
+              <label for="slider-exposure">Daylight Exposure</label>
+              <span id="val-exposure" class="slider-val mono">0.95x</span>
+            </div>
+            <input
+              id="slider-exposure"
+              type="range"
+              min="0.3"
+              max="1.8"
+              step="0.05"
+              value="0.95"
+            />
+          </div>
+
+          <!-- Smart Auto-Texture Toggle for Untextured / Clay GLB Models -->
+          <div class="btn-row" style="margin-top: 2px">
+            <button
+              id="btn-auto-texture"
+              type="button"
+              class="btn-secondary active-toggle"
+              style="width: 100%; justify-content: space-between; font-size: 11.5px"
+              title="Automatically applies architectural brick, shingle, grass, tree leaf, and road textures to untextured white/clay GLB meshes"
+            >
+              <span>Auto-Texture White/Clay GLB Meshes</span>
+              <span id="val-auto-texture" class="mono">ON</span>
+            </button>
+          </div>
+
+          <div class="metrics-card">
+            <div class="metrics-row">
+              <span
+                id="metric-name"
+                style="
+                  max-width: 185px;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                "
+              >
+                Procedural Urban House
+              </span>
+              <span id="metric-counts" class="mono" style="color: #e5e7eb">68 meshes</span>
+            </div>
+            <div class="metrics-row mono" style="color: #d1d5db; font-size: 11px">
+              <span id="metric-w">W: 40.00m</span>
+              <span>·</span>
+              <span id="metric-h">H: 10.40m</span>
+              <span>·</span>
+              <span id="metric-d">D: 40.00m</span>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- 03. Quick Viewpoints & Camera Locomotion -->
+        <div class="section-block">
+          <div class="section-header">
+            <span>03. Quick Viewpoints</span>
+            <span id="metric-coords" class="mono" style="font-size: 11px; color: var(--text-muted)">
+              (18.5m, 6.2m, 26.5m)
+            </span>
+          </div>
+
+          <div class="viewpoint-grid">
+            <button type="button" class="vp-btn active" data-vp="overview">
+              3D Overview (Orbit)
+            </button>
+            <button type="button" class="vp-btn" data-vp="front-street">
+              Front Street
+            </button>
+            <button type="button" class="vp-btn" data-vp="front-porch">
+              Front Porch
+            </button>
+            <button type="button" class="vp-btn" data-vp="driveway">
+              Driveway
+            </button>
+            <button type="button" class="vp-btn" data-vp="backyard-pool">
+              Backyard Pool
+            </button>
+            <button id="btn-pointer-lock" type="button" class="vp-btn">
+              FPS Mouse Lock
+            </button>
+          </div>
+
+          <div class="help-card">
+            <div style="display: flex; justify-content: space-between; align-items: center">
+              <strong>VR &amp; Desktop Locomotion</strong>
+              <span id="label-cam-mode" class="mono" style="color: var(--accent)">Orbit Mode</span>
+            </div>
+            <div>
+              <strong>Desktop:</strong> Drag to orbit or press <span class="mono">WASD</span> to
+              walk at 1.6m eye height · <span class="mono">Q/E</span> 45° snap turn ·
+              <strong>Double-click</strong> any surface to stand there.
+            </div>
+            <div>
+              <strong>WebXR VR:</strong> Left Stick smooth walk (3.5 m/s) · Right Stick 45° snap
+              turn · Hold &amp; release Trigger to raycast &amp; teleport.
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom-Right VR Button & Eye Height Telemetry -->
+    <div id="vr-dock">
+      <div class="dock-info">
+        <span>Double-click surface to teleport (1.6m)</span>
+        <span>·</span>
+        <span id="dock-eye-height" class="mono">Eye: 6.20m (Orbit)</span>
+      </div>
+      <div id="vr-button-mount"></div>
+    </div>
+
+    <!-- Main Application Module (Zero-Build Native ES Module) -->
+    <script type="module">
+      import * as THREE from 'three';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+      import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+      import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { VRButton } from 'three/addons/webxr/VRButton.js';
+      import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+      import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+      // ========================================================================
+      // 1. PROCEDURAL ARCHITECTURAL TEXTURES & PBR MATERIAL LIBRARY
+      // ========================================================================
+      function configureCanvasTexture(canvas, repeatX, repeatY, maxAnisotropy) {
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repeatX, repeatY);
+        tex.anisotropy = maxAnisotropy;
+        tex.needsUpdate = true;
+        return tex;
+      }
+
+      function createProceduralTextures(maxAnisotropy = 8) {
+        // 1. Reddish-Brown Clapboard / Brick Siding Texture
+        const sidingCanvas = document.createElement('canvas');
+        sidingCanvas.width = 512;
+        sidingCanvas.height = 512;
+        const sCtx = sidingCanvas.getContext('2d');
+        sCtx.fillStyle = '#7e3b2e';
+        sCtx.fillRect(0, 0, 512, 512);
+
+        const courses = 16;
+        const courseH = 512 / courses;
+        for (let row = 0; row < courses; row++) {
+          const y = row * courseH;
+          const grad = sCtx.createLinearGradient(0, y, 0, y + courseH);
+          grad.addColorStop(0, '#8d4335');
+          grad.addColorStop(0.75, '#78362a');
+          grad.addColorStop(1, '#58251c');
+          sCtx.fillStyle = grad;
+          sCtx.fillRect(0, y, 512, courseH - 2);
+
+          const cols = 8;
+          const colW = 512 / cols;
+          const offset = (row % 2) * (colW / 2);
+          for (let col = -1; col <= cols; col++) {
+            const x = col * colW + offset;
+            const shade = ((row * 7 + col * 13) % 5) * 4 - 8;
+            sCtx.fillStyle = `rgba(${135 + shade}, ${62 + shade}, ${48 + shade}, 0.35)`;
+            sCtx.fillRect(x + 2, y + 1, colW - 4, courseH - 4);
+            sCtx.fillStyle = 'rgba(55, 22, 16, 0.45)';
+            sCtx.fillRect(x, y, 2, courseH);
+          }
+          sCtx.fillStyle = 'rgba(35, 12, 8, 0.65)';
+          sCtx.fillRect(0, y + courseH - 2, 512, 2);
+        }
+
+        // 2. Central Gable Fieldstone Masonry Texture
+        const stoneCanvas = document.createElement('canvas');
+        stoneCanvas.width = 512;
+        stoneCanvas.height = 512;
+        const stCtx = stoneCanvas.getContext('2d');
+        stCtx.fillStyle = '#8b8574';
+        stCtx.fillRect(0, 0, 512, 512);
+
+        const stoneColors = ['#b5ae99', '#a39c86', '#968f7b', '#c2bba6', '#8a826e'];
+        const stoneRows = 12;
+        const stoneRowH = 512 / stoneRows;
+        for (let r = 0; r < stoneRows; r++) {
+          let curX = (r % 2) * -28;
+          const y = r * stoneRowH;
+          while (curX < 512) {
+            const w = 48 + ((r * 19 + curX * 7) % 44);
+            const color =
+              stoneColors[Math.abs(r * 11 + Math.floor(curX)) % stoneColors.length];
+            stCtx.fillStyle = color;
+            stCtx.fillRect(curX + 3, y + 3, w - 5, stoneRowH - 5);
+            stCtx.fillStyle = 'rgba(255,255,255,0.16)';
+            stCtx.fillRect(curX + 3, y + 3, w - 5, 3);
+            stCtx.fillStyle = 'rgba(0,0,0,0.22)';
+            stCtx.fillRect(curX + 3, y + stoneRowH - 5, w - 5, 3);
+            curX += w;
+          }
+        }
+
+        // 3. Dark Charcoal Architectural Roof Shingles
+        const roofCanvas = document.createElement('canvas');
+        roofCanvas.width = 512;
+        roofCanvas.height = 512;
+        const rCtx = roofCanvas.getContext('2d');
+        rCtx.fillStyle = '#333638';
+        rCtx.fillRect(0, 0, 512, 512);
+
+        const shingleRows = 16;
+        const sRowH = 512 / shingleRows;
+        for (let r = 0; r < shingleRows; r++) {
+          const y = r * sRowH;
+          const cols = 8;
+          const cW = 512 / cols;
+          const off = (r % 2) * (cW / 2);
+          for (let c = -1; c <= cols; c++) {
+            const x = c * cW + off;
+            const v = 46 + ((r * 13 + c * 29) % 18);
+            rCtx.fillStyle = `rgb(${v}, ${v + 2}, ${v + 4})`;
+            rCtx.fillRect(x + 1, y + 1, cW - 2, sRowH - 3);
+          }
+          rCtx.fillStyle = 'rgba(18, 20, 22, 0.7)';
+          rCtx.fillRect(0, y + sRowH - 2, 512, 2);
+        }
+
+        // 4. Lush Suburban Grass Lawn Texture
+        const grassCanvas = document.createElement('canvas');
+        grassCanvas.width = 512;
+        grassCanvas.height = 512;
+        const gCtx = grassCanvas.getContext('2d');
+        gCtx.fillStyle = '#5ca332';
+        gCtx.fillRect(0, 0, 512, 512);
+        for (let i = 0; i < 8; i++) {
+          gCtx.fillStyle =
+            i % 2 === 0 ? 'rgba(115, 185, 65, 0.16)' : 'rgba(68, 128, 32, 0.14)';
+          gCtx.fillRect(i * 64, 0, 64, 512);
+        }
+        for (let i = 0; i < 6000; i++) {
+          const gx = (i * 73) % 512;
+          const gy = (i * 137) % 512;
+          gCtx.fillStyle = i % 3 === 0 ? '#6db83d' : i % 3 === 1 ? '#4e8f28' : '#7ac449';
+          gCtx.fillRect(gx, gy, 2, 4);
+        }
+
+        // 5. Concrete Paver Sidewalk & Driveway Texture
+        const paverCanvas = document.createElement('canvas');
+        paverCanvas.width = 512;
+        paverCanvas.height = 512;
+        const pCtx = paverCanvas.getContext('2d');
+        pCtx.fillStyle = '#dcdede';
+        pCtx.fillRect(0, 0, 512, 512);
+        const pGrid = 8;
+        const pSize = 512 / pGrid;
+        for (let r = 0; r < pGrid; r++) {
+          for (let c = 0; c < pGrid; c++) {
+            const x = c * pSize;
+            const y = r * pSize;
+            const tone = 216 + ((r * 7 + c * 11) % 16);
+            pCtx.fillStyle = `rgb(${tone}, ${tone + 1}, ${tone + 2})`;
+            pCtx.fillRect(x + 2, y + 2, pSize - 4, pSize - 4);
+            pCtx.strokeStyle = 'rgba(150, 155, 160, 0.55)';
+            pCtx.lineWidth = 2;
+            pCtx.strokeRect(x + 1, y + 1, pSize - 2, pSize - 2);
+          }
+        }
+
+        // 6. Dark Asphalt Street Texture
+        const roadCanvas = document.createElement('canvas');
+        roadCanvas.width = 512;
+        roadCanvas.height = 512;
+        const rdCtx = roadCanvas.getContext('2d');
+        rdCtx.fillStyle = '#1b1d1f';
+        rdCtx.fillRect(0, 0, 512, 512);
+        for (let i = 0; i < 5000; i++) {
+          const rx = (i * 97) % 512;
+          const ry = (i * 193) % 512;
+          const v = 22 + (i % 18);
+          rdCtx.fillStyle = `rgb(${v}, ${v + 1}, ${v + 2})`;
+          rdCtx.fillRect(rx, ry, 2, 2);
+        }
+
+        // 7. Pool Water Caustic Texture
+        const poolCanvas = document.createElement('canvas');
+        poolCanvas.width = 512;
+        poolCanvas.height = 512;
+        const plCtx = poolCanvas.getContext('2d');
+        const poolGrad = plCtx.createLinearGradient(0, 0, 512, 512);
+        poolGrad.addColorStop(0, '#0ea5e9');
+        poolGrad.addColorStop(0.5, '#38bdf8');
+        poolGrad.addColorStop(1, '#0284c7');
+        plCtx.fillStyle = poolGrad;
+        plCtx.fillRect(0, 0, 512, 512);
+
+        // 8. Paneled Garage Door Texture
+        const garageCanvas = document.createElement('canvas');
+        garageCanvas.width = 512;
+        garageCanvas.height = 512;
+        const grCtx = garageCanvas.getContext('2d');
+        grCtx.fillStyle = '#d8e0d8';
+        grCtx.fillRect(0, 0, 512, 512);
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 4; c++) {
+            const x = c * 128 + 14;
+            const y = r * 128 + 16;
+            grCtx.strokeStyle = '#9aa59c';
+            grCtx.lineWidth = 4;
+            grCtx.strokeRect(x, y, 100, 96);
+            grCtx.fillStyle = r === 0 ? '#7b8c98' : '#ced7ce';
+            grCtx.fillRect(x + 4, y + 4, 92, 88);
+          }
+        }
+
+        return {
+          brickSiding: configureCanvasTexture(sidingCanvas, 4, 3, maxAnisotropy),
+          stoneMasonry: configureCanvasTexture(stoneCanvas, 2, 2.5, maxAnisotropy),
+          roofShingles: configureCanvasTexture(roofCanvas, 6, 4, maxAnisotropy),
+          grassLawn: configureCanvasTexture(grassCanvas, 12, 12, maxAnisotropy),
+          concretePavers: configureCanvasTexture(paverCanvas, 8, 8, maxAnisotropy),
+          asphaltRoad: configureCanvasTexture(roadCanvas, 14, 14, maxAnisotropy),
+          poolWater: configureCanvasTexture(poolCanvas, 3, 3, maxAnisotropy),
+          garagePanel: configureCanvasTexture(garageCanvas, 1, 1, maxAnisotropy),
+        };
+      }
+
+      // ========================================================================
+      // 2. PROCEDURAL PLACEHOLDER SUBURBAN HOUSE BUILDER
+      // ========================================================================
+      function buildProceduralUrbanHouse(textures) {
+        const root = new THREE.Group();
+        root.name = 'ProceduralUrbanHouse';
+
+        const sidingMat = new THREE.MeshStandardMaterial({
+          map: textures.brickSiding,
+          roughness: 0.78,
+          metalness: 0.04,
+          envMapIntensity: 0.35,
+        });
+        const stoneMat = new THREE.MeshStandardMaterial({
+          map: textures.stoneMasonry,
+          roughness: 0.85,
+          metalness: 0.04,
+          envMapIntensity: 0.35,
+        });
+        const roofMat = new THREE.MeshStandardMaterial({
+          map: textures.roofShingles,
+          roughness: 0.82,
+          metalness: 0.06,
+          side: THREE.DoubleSide,
+          envMapIntensity: 0.35,
+        });
+        const whiteTrimMat = new THREE.MeshStandardMaterial({
+          color: 0xf1f3f5,
+          roughness: 0.48,
+          metalness: 0.05,
+          envMapIntensity: 0.35,
+        });
+        const windowGlassMat = new THREE.MeshPhysicalMaterial({
+          color: 0x3b4d5e,
+          roughness: 0.12,
+          metalness: 0.15,
+          reflectivity: 0.9,
+          clearcoat: 0.8,
+          envMapIntensity: 0.65,
+        });
+        const foundationMat = new THREE.MeshStandardMaterial({
+          color: 0x7c7f82,
+          roughness: 0.88,
+          metalness: 0.04,
+          envMapIntensity: 0.3,
+        });
+        const lawnMat = new THREE.MeshStandardMaterial({
+          map: textures.grassLawn,
+          roughness: 0.9,
+          metalness: 0.02,
+          envMapIntensity: 0.25,
+        });
+        const sidewalkMat = new THREE.MeshStandardMaterial({
+          map: textures.concretePavers,
+          roughness: 0.75,
+          metalness: 0.04,
+          envMapIntensity: 0.3,
+        });
+        const roadMat = new THREE.MeshStandardMaterial({
+          map: textures.asphaltRoad,
+          roughness: 0.88,
+          metalness: 0.05,
+          envMapIntensity: 0.25,
+        });
+        const garageDoorMat = new THREE.MeshStandardMaterial({
+          map: textures.garagePanel,
+          roughness: 0.52,
+          metalness: 0.12,
+          envMapIntensity: 0.35,
+        });
+
+        // 1. Road, Lawn, Sidewalks & Driveway
+        const roadBase = new THREE.Mesh(new THREE.BoxGeometry(40, 0.12, 40), roadMat);
+        roadBase.position.set(0, -0.06, 0);
+        roadBase.receiveShadow = true;
+        root.add(roadBase);
+
+        const lawnMesh = new THREE.Mesh(new THREE.BoxGeometry(32, 0.06, 32), lawnMat);
+        lawnMesh.position.set(-2.5, 0.03, -2.5);
+        lawnMesh.receiveShadow = true;
+        root.add(lawnMesh);
+
+        const frontSidewalk = new THREE.Mesh(
+          new THREE.BoxGeometry(31.8, 0.05, 1.5),
+          sidewalkMat
+        );
+        frontSidewalk.position.set(-2.5, 0.075, 11.6);
+        frontSidewalk.receiveShadow = true;
+        root.add(frontSidewalk);
+
+        const rightSidewalk = new THREE.Mesh(
+          new THREE.BoxGeometry(2.1, 0.05, 31.8),
+          sidewalkMat
+        );
+        rightSidewalk.position.set(11.6, 0.075, -2.5);
+        rightSidewalk.receiveShadow = true;
+        root.add(rightSidewalk);
+
+        const porchWalkway = new THREE.Mesh(
+          new THREE.BoxGeometry(2.2, 0.055, 8.2),
+          sidewalkMat
+        );
+        porchWalkway.position.set(-4.2, 0.078, 9.4);
+        porchWalkway.receiveShadow = true;
+        root.add(porchWalkway);
+
+        const drivewayPad = new THREE.Mesh(
+          new THREE.BoxGeometry(10.6, 0.055, 6.4),
+          sidewalkMat
+        );
+        drivewayPad.position.set(8.2, 0.078, 1.4);
+        drivewayPad.receiveShadow = true;
+        root.add(drivewayPad);
+
+        // 2. Main House Structure
+        const houseGroup = new THREE.Group();
+        houseGroup.position.set(-2.5, 0.06, -0.5);
+        root.add(houseGroup);
+
+        const foundation = new THREE.Mesh(
+          new THREE.BoxGeometry(15.2, 0.35, 10.6),
+          foundationMat
+        );
+        foundation.position.set(0, 0.175, 0);
+        houseGroup.add(foundation);
+
+        const mainCore = new THREE.Mesh(new THREE.BoxGeometry(9.6, 6.4, 9.8), sidingMat);
+        mainCore.position.set(-2.6, 3.55, -0.2);
+        houseGroup.add(mainCore);
+
+        const rightWing = new THREE.Mesh(new THREE.BoxGeometry(6.0, 5.8, 9.2), sidingMat);
+        rightWing.position.set(4.8, 3.25, 0.2);
+        houseGroup.add(rightWing);
+
+        const leftProjection = new THREE.Mesh(
+          new THREE.BoxGeometry(3.8, 6.4, 1.2),
+          sidingMat
+        );
+        leftProjection.position.set(-5.2, 3.55, 4.9);
+        houseGroup.add(leftProjection);
+
+        const stoneProjection = new THREE.Mesh(
+          new THREE.BoxGeometry(3.1, 6.5, 1.4),
+          stoneMat
+        );
+        stoneProjection.position.set(-1.7, 3.6, 5.0);
+        houseGroup.add(stoneProjection);
+
+        const bayProjection = new THREE.Mesh(
+          new THREE.BoxGeometry(3.2, 2.5, 0.9),
+          sidingMat
+        );
+        bayProjection.position.set(4.8, 4.7, 5.0);
+        houseGroup.add(bayProjection);
+
+        function createGableRoof(width, height, depth, wallMaterial, withWhiteRake = true) {
+          const gGroup = new THREE.Group();
+          const halfW = width / 2;
+          const wallShape = new THREE.Shape();
+          wallShape.moveTo(-halfW + 0.15, 0);
+          wallShape.lineTo(halfW - 0.15, 0);
+          wallShape.lineTo(0, height - 0.1);
+          wallShape.closePath();
+
+          const wallGeo = new THREE.ExtrudeGeometry(wallShape, {
+            depth: depth - 0.3,
+            bevelEnabled: false,
+          });
+          wallGeo.translate(0, 0, -(depth - 0.3) / 2);
+          gGroup.add(new THREE.Mesh(wallGeo, wallMaterial));
+
+          const slopeLen = Math.hypot(halfW + 0.35, height + 0.15);
+          const slopeAngle = Math.atan2(height, halfW);
+
+          const leftSlope = new THREE.Mesh(
+            new THREE.BoxGeometry(slopeLen, 0.18, depth + 0.4),
+            roofMat
+          );
+          leftSlope.position.set(-halfW / 2 - 0.08, height / 2, 0);
+          leftSlope.rotation.z = slopeAngle;
+          gGroup.add(leftSlope);
+
+          const rightSlope = new THREE.Mesh(
+            new THREE.BoxGeometry(slopeLen, 0.18, depth + 0.4),
+            roofMat
+          );
+          rightSlope.position.set(halfW / 2 + 0.08, height / 2, 0);
+          rightSlope.rotation.z = -slopeAngle;
+          gGroup.add(rightSlope);
+
+          if (withWhiteRake) {
+            const leftTrim = new THREE.Mesh(
+              new THREE.BoxGeometry(slopeLen + 0.05, 0.14, 0.12),
+              whiteTrimMat
+            );
+            leftTrim.position.set(-halfW / 2 - 0.08, height / 2 - 0.04, depth / 2 + 0.18);
+            leftTrim.rotation.z = slopeAngle;
+            gGroup.add(leftTrim);
+
+            const rightTrim = new THREE.Mesh(
+              new THREE.BoxGeometry(slopeLen + 0.05, 0.14, 0.12),
+              whiteTrimMat
+            );
+            rightTrim.position.set(halfW / 2 + 0.08, height / 2 - 0.04, depth / 2 + 0.18);
+            rightTrim.rotation.z = -slopeAngle;
+            gGroup.add(rightTrim);
+          }
+          return gGroup;
+        }
+
+        const mainTransverseRoof = createGableRoof(10.2, 3.4, 15.6, sidingMat, false);
+        mainTransverseRoof.rotation.y = Math.PI / 2;
+        mainTransverseRoof.position.set(0.1, 6.5, -0.2);
+        houseGroup.add(mainTransverseRoof);
+
+        const leftGableRoof = createGableRoof(4.2, 2.6, 4.6, sidingMat, true);
+        leftGableRoof.position.set(-5.2, 6.75, 3.4);
+        houseGroup.add(leftGableRoof);
+
+        const stoneGableRoof = createGableRoof(3.4, 2.3, 4.2, stoneMat, true);
+        stoneGableRoof.position.set(-1.7, 6.45, 3.8);
+        houseGroup.add(stoneGableRoof);
+
+        const rightSkirtRoof = new THREE.Mesh(
+          new THREE.BoxGeometry(6.4, 0.2, 1.4),
+          roofMat
+        );
+        rightSkirtRoof.position.set(4.8, 3.45, 5.1);
+        rightSkirtRoof.rotation.x = 0.35;
+        houseGroup.add(rightSkirtRoof);
+
+        const bayCap = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.1, 4), roofMat);
+        bayCap.position.set(4.8, 6.5, 4.9);
+        bayCap.rotation.y = Math.PI / 4;
+        bayCap.scale.set(1.05, 1, 0.55);
+        houseGroup.add(bayCap);
+
+        // 3. Front Porch & Arched Pediment
+        const porchGroup = new THREE.Group();
+        porchGroup.position.set(-3.4, 0, 6.4);
+        houseGroup.add(porchGroup);
+
+        const porchDeck = new THREE.Mesh(
+          new THREE.BoxGeometry(7.2, 0.36, 2.6),
+          foundationMat
+        );
+        porchDeck.position.set(0, 0.18, 0);
+        porchGroup.add(porchDeck);
+
+        const porchTop = new THREE.Mesh(
+          new THREE.BoxGeometry(7.1, 0.04, 2.55),
+          sidewalkMat
+        );
+        porchTop.position.set(0, 0.38, 0);
+        porchGroup.add(porchTop);
+
+        for (const cx of [-3.1, 0.2, 3.1]) {
+          const colGroup = new THREE.Group();
+          colGroup.position.set(cx, 0.4, 1.05);
+          const plinth = new THREE.Mesh(
+            new THREE.BoxGeometry(0.46, 0.65, 0.46),
+            whiteTrimMat
+          );
+          plinth.position.y = 0.325;
+          colGroup.add(plinth);
+          const shaft = new THREE.Mesh(
+            new THREE.BoxGeometry(0.32, 2.15, 0.32),
+            whiteTrimMat
+          );
+          shaft.position.y = 1.4;
+          colGroup.add(shaft);
+          const capital = new THREE.Mesh(
+            new THREE.BoxGeometry(0.44, 0.2, 0.44),
+            whiteTrimMat
+          );
+          capital.position.y = 2.52;
+          colGroup.add(capital);
+          porchGroup.add(colGroup);
+        }
+
+        const porchBeam = new THREE.Mesh(
+          new THREE.BoxGeometry(7.3, 0.26, 2.6),
+          whiteTrimMat
+        );
+        porchBeam.position.set(0, 3.05, 0);
+        porchGroup.add(porchBeam);
+
+        const porchRoof = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.22, 2.85), roofMat);
+        porchRoof.position.set(0, 3.38, -0.05);
+        porchRoof.rotation.x = 0.24;
+        porchGroup.add(porchRoof);
+
+        const archRing = new THREE.Mesh(
+          new THREE.TorusGeometry(1.45, 0.14, 12, 32, Math.PI),
+          whiteTrimMat
+        );
+        archRing.position.set(1.65, 2.95, 1.16);
+        archRing.scale.set(1, 0.55, 0.6);
+        porchGroup.add(archRing);
+
+        const archGable = createGableRoof(3.2, 1.25, 2.6, whiteTrimMat, true);
+        archGable.position.set(1.65, 3.18, 0.05);
+        porchGroup.add(archGable);
+
+        // Front Door
+        const doorGroup = new THREE.Group();
+        doorGroup.position.set(-1.75, 0.4, 5.72);
+        houseGroup.add(doorGroup);
+        const doorFrame = new THREE.Mesh(
+          new THREE.BoxGeometry(2.1, 2.55, 0.14),
+          whiteTrimMat
+        );
+        doorFrame.position.y = 1.275;
+        doorGroup.add(doorFrame);
+
+        // 4. Windows
+        function createWindow(width, height, withShutters = true, cols = 3, rows = 4) {
+          const wGroup = new THREE.Group();
+          wGroup.add(new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.14), whiteTrimMat));
+          wGroup.add(
+            new THREE.Mesh(
+              new THREE.BoxGeometry(width - 0.16, height - 0.16, 0.16),
+              windowGlassMat
+            )
+          );
+          for (let c = 1; c < cols; c++) {
+            const vBar = new THREE.Mesh(
+              new THREE.BoxGeometry(0.035, height - 0.14, 0.18),
+              whiteTrimMat
+            );
+            vBar.position.x = -width / 2 + (width / cols) * c;
+            wGroup.add(vBar);
+          }
+          for (let r = 1; r < rows; r++) {
+            const hBar = new THREE.Mesh(
+              new THREE.BoxGeometry(width - 0.14, 0.035, 0.18),
+              whiteTrimMat
+            );
+            hBar.position.y = -height / 2 + (height / rows) * r;
+            wGroup.add(hBar);
+          }
+          if (withShutters) {
+            const shutterW = 0.34;
+            const leftS = new THREE.Mesh(
+              new THREE.BoxGeometry(shutterW, height - 0.04, 0.08),
+              whiteTrimMat
+            );
+            leftS.position.set(-width / 2 - shutterW / 2 - 0.04, 0, 0.02);
+            wGroup.add(leftS);
+            const rightS = new THREE.Mesh(
+              new THREE.BoxGeometry(shutterW, height - 0.04, 0.08),
+              whiteTrimMat
+            );
+            rightS.position.set(width / 2 + shutterW / 2 + 0.04, 0, 0.02);
+            wGroup.add(rightS);
+          }
+          return wGroup;
+        }
+
+        const windowSpecs = [
+          [-5.9, 1.8, 5.52, 1.15, 1.85, true],
+          [-3.9, 1.8, 5.52, 1.15, 1.85, true],
+          [-5.95, 4.9, 5.52, 0.85, 1.35, true],
+          [-4.35, 4.9, 5.52, 0.85, 1.35, true],
+          [-1.7, 4.85, 5.72, 1.45, 1.35, false],
+          [0.8, 1.8, 4.72, 1.05, 1.8, true],
+          [0.8, 4.8, 4.72, 1.05, 1.45, true],
+          [3.4, 1.8, 4.82, 1.25, 1.95, true],
+          [6.1, 1.8, 4.82, 1.25, 1.95, true],
+          [4.8, 4.75, 5.47, 2.2, 1.55, false],
+        ];
+        for (const [wx, wy, wz, ww, wh, sh] of windowSpecs) {
+          const w = createWindow(ww, wh, sh);
+          w.position.set(wx, wy, wz);
+          houseGroup.add(w);
+        }
+
+        // 5. Right-Side Double Garage Doors
+        for (const gz of [2.9, -0.3]) {
+          const gDoorGroup = new THREE.Group();
+          gDoorGroup.position.set(7.82, 1.45, gz);
+          gDoorGroup.rotation.y = Math.PI / 2;
+          gDoorGroup.add(new THREE.Mesh(new THREE.BoxGeometry(2.65, 2.35, 0.12), whiteTrimMat));
+          gDoorGroup.add(new THREE.Mesh(new THREE.BoxGeometry(2.48, 2.22, 0.16), garageDoorMat));
+          houseGroup.add(gDoorGroup);
+        }
+
+        // 6. Backyard Swimming Pool
+        const poolGroup = new THREE.Group();
+        poolGroup.position.set(0.5, 0.06, -11.2);
+        root.add(poolGroup);
+
+        const poolDeck = new THREE.Mesh(
+          new THREE.BoxGeometry(14.5, 0.06, 9.2),
+          sidewalkMat
+        );
+        poolDeck.position.set(0, 0.03, 0);
+        poolGroup.add(poolDeck);
+
+        const waterMat = new THREE.MeshPhysicalMaterial({
+          map: textures.poolWater,
+          color: 0x38bdf8,
+          roughness: 0.1,
+          clearcoat: 1.0,
+        });
+        const poolWaterMesh = new THREE.Mesh(new THREE.BoxGeometry(8.9, 0.13, 4.7), waterMat);
+        poolWaterMesh.position.set(0, 0.06, 0);
+        poolGroup.add(poolWaterMesh);
+
+        // 7. Three Deciduous Trees matching Screenshot
+        const barkMat = new THREE.MeshStandardMaterial({
+          color: 0x4a3728,
+          roughness: 0.92,
+        });
+        const foliageMats = [0x4c7c29, 0x5c8f32, 0x3e6b1f, 0x6a9e3b].map(
+          (col) =>
+            new THREE.MeshStandardMaterial({
+              color: col,
+              roughness: 0.82,
+              flatShading: true,
+            })
+        );
+
+        function createDeciduousTree(heightScale, seed) {
+          const tree = new THREE.Group();
+          const trunkH = 3.2 * heightScale;
+          const trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.14 * heightScale, 0.26 * heightScale, trunkH, 10),
+            barkMat
+          );
+          trunk.position.y = trunkH / 2;
+          tree.add(trunk);
+
+          const clusterOffsets = [
+            [0, 4.4, 0, 1.95],
+            [-0.95, 3.8, 0.7, 1.45],
+            [1.0, 3.9, 0.65, 1.5],
+            [0.1, 3.7, -1.05, 1.5],
+            [-0.85, 4.7, -0.65, 1.4],
+            [0.85, 4.8, -0.55, 1.38],
+            [0, 5.65, 0.1, 1.55],
+            [-0.6, 5.2, 0.65, 1.25],
+            [0.65, 5.15, 0.6, 1.25],
+          ];
+          clusterOffsets.forEach(([ox, oy, oz, rad], idx) => {
+            const mat = foliageMats[(idx + seed) % foliageMats.length];
+            const cluster = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(rad * heightScale, 1),
+              mat
+            );
+            cluster.position.set(ox * heightScale, oy * heightScale, oz * heightScale);
+            cluster.scale.set(1, 1.12, 0.96);
+            tree.add(cluster);
+          });
+          return tree;
+        }
+
+        const t1 = createDeciduousTree(1.05, 1);
+        t1.position.set(-12.6, 0.06, 5.4);
+        root.add(t1);
+
+        const t2 = createDeciduousTree(1.85, 2);
+        t2.position.set(5.8, 0.06, 8.4);
+        root.add(t2);
+
+        const t3 = createDeciduousTree(1.65, 3);
+        t3.position.set(8.4, 0.06, -4.8);
+        root.add(t3);
+
+        return root;
+      }
+
+      // ========================================================================
+      // 3. KHR_materials_pbrSpecularGlossiness & CLAY GLB AUTO-MATERIALIZER
+      // ========================================================================
+      function registerGlbExtensionsPlugin(loader) {
+        loader.register((parser) => {
+          const patchJson = () => {
+            const json = parser.json;
+            if (!json) return;
+
+            if (Array.isArray(json.textures)) {
+              for (const texDef of json.textures) {
+                if (texDef.source === undefined && texDef.extensions?.EXT_texture_webp?.source !== undefined) {
+                  texDef.source = texDef.extensions.EXT_texture_webp.source;
+                }
+              }
+            }
+
+            if (Array.isArray(json.materials)) {
+              for (const matDef of json.materials) {
+                if (!matDef.pbrMetallicRoughness) {
+                  matDef.pbrMetallicRoughness = {};
+                }
+                const pbr = matDef.pbrMetallicRoughness;
+                const sg = matDef.extensions?.KHR_materials_pbrSpecularGlossiness;
+
+                if (sg) {
+                  if (sg.diffuseTexture && !pbr.baseColorTexture) {
+                    pbr.baseColorTexture = sg.diffuseTexture;
+                  }
+                  if (Array.isArray(sg.diffuseFactor) && !pbr.baseColorFactor) {
+                    pbr.baseColorFactor = sg.diffuseFactor;
+                  }
+                  const gloss = typeof sg.glossinessFactor === 'number' ? sg.glossinessFactor : 0.35;
+                  pbr.roughnessFactor = Math.min(0.95, Math.max(0.25, 1.0 - gloss * 0.65));
+                  pbr.metallicFactor = 0.02;
+                  delete matDef.extensions.KHR_materials_pbrSpecularGlossiness;
+                } else {
+                  if (pbr.metallicFactor === undefined && !pbr.metallicRoughnessTexture) {
+                    pbr.metallicFactor = 0.03;
+                  }
+                  if (pbr.roughnessFactor === undefined && !pbr.metallicRoughnessTexture) {
+                    pbr.roughnessFactor = 0.78;
+                  }
+                }
+
+                if (Array.isArray(matDef.emissiveFactor) && !matDef.emissiveTexture) {
+                  const [er, eg, eb] = matDef.emissiveFactor;
+                  if (er > 0.05 || eg > 0.05 || eb > 0.05) {
+                    matDef.emissiveFactor = [0, 0, 0];
+                  }
+                }
+              }
+            }
+          };
+
+          patchJson();
+          return {
+            name: 'KHR_materials_pbrSpecularGlossiness_ArchVizCompat',
+            beforeRoot: async () => patchJson(),
+          };
+        });
+      }
+
+      // ========================================================================
+      // 4. SCENE, RENDERER, CAMERAS, WEBXR CONTROLLERS & LOCOMOTION INITIALIZATION
+      // ========================================================================
+      const container = document.getElementById('canvas-container');
+      const isHeadless = navigator.webdriver || /HeadlessChrome/i.test(navigator.userAgent);
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x878f99);
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: 'high-performance',
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(isHeadless ? 1 : Math.min(window.devicePixelRatio, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.NeutralToneMapping;
+      renderer.toneMappingExposure = 0.95;
+      renderer.shadowMap.enabled = !isHeadless;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.xr.enabled = true;
+      container.appendChild(renderer.domElement);
+
+      // Mount Three.js VRButton
+      const vrBtn = VRButton.createButton(renderer);
+      vrBtn.style.position = 'static';
+      vrBtn.style.width = 'auto';
+      vrBtn.style.padding = '8px 16px';
+      vrBtn.style.borderRadius = '8px';
+      vrBtn.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
+      vrBtn.style.fontSize = '12px';
+      vrBtn.style.fontWeight = '600';
+      vrBtn.style.background = 'rgba(245, 158, 11, 0.95)';
+      vrBtn.style.color = '#0a0a0c';
+      vrBtn.style.border = '1px solid rgba(254, 243, 199, 0.5)';
+      vrBtn.style.opacity = '1';
+      document.getElementById('vr-button-mount').appendChild(vrBtn);
+
+      // Studio Environment & Calibrated Architectural Lighting
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+      if ('environmentIntensity' in scene) {
+        scene.environmentIntensity = 0.35;
+      }
+      pmremGenerator.dispose();
+
+      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x556052, 0.6);
+      hemiLight.position.set(0, 50, 0);
+      scene.add(hemiLight);
+
+      const sunLight = new THREE.DirectionalLight(0xfffaf0, 1.3);
+      sunLight.position.set(28, 42, 32);
+      sunLight.castShadow = !isHeadless;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      const d = 32;
+      sunLight.shadow.camera.left = -d;
+      sunLight.shadow.camera.right = d;
+      sunLight.shadow.camera.top = d;
+      sunLight.shadow.camera.bottom = -d;
+      sunLight.shadow.camera.near = 1;
+      sunLight.shadow.camera.far = 140;
+      sunLight.shadow.bias = -0.0004;
+      sunLight.shadow.normalBias = 0.02;
+      scene.add(sunLight);
+
+      const fillLight = new THREE.DirectionalLight(0xdbeafe, 0.32);
+      fillLight.position.set(-28, 20, -24);
+      scene.add(fillLight);
+
+      // Camera Dolly (y = 0) with Walk/VR Camera at y = 1.6m
+      const dolly = new THREE.Group();
+      dolly.name = 'PlayerCameraDolly';
+      dolly.position.set(-3.5, 0.08, 18.5);
+      scene.add(dolly);
+
+      const walkCamera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        500
+      );
+      walkCamera.position.set(0, 1.6, 0);
+      walkCamera.rotation.order = 'YXZ';
+      dolly.add(walkCamera);
+
+      // Orbit Camera for 3D Exterior Overview
+      const orbitCamera = new THREE.PerspectiveCamera(
+        45,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        600
+      );
+      orbitCamera.position.set(18.5, 6.2, 26.5);
+
+      const orbitControls = new OrbitControls(orbitCamera, renderer.domElement);
+      orbitControls.enableDamping = true;
+      orbitControls.dampingFactor = 0.07;
+      orbitControls.maxPolarAngle = Math.PI / 2 - 0.01;
+      orbitControls.minDistance = 2;
+      orbitControls.maxDistance = 180;
+      orbitControls.target.set(-1.0, 2.6, 0.0);
+      orbitControls.update();
+
+      renderer.xr.addEventListener('sessionstart', () => {
+        walkCamera.position.y = 0;
+      });
+      renderer.xr.addEventListener('sessionend', () => {
+        walkCamera.position.y = 1.6;
+      });
+
+      // Glowing Teleport Ring Reticle
+      const reticleGroup = new THREE.Group();
+      reticleGroup.visible = false;
+      scene.add(reticleGroup);
+
+      const outerRingGeo = new THREE.RingGeometry(0.32, 0.44, 40);
+      outerRingGeo.rotateX(-Math.PI / 2);
+      reticleGroup.add(
+        new THREE.Mesh(
+          outerRingGeo,
+          new THREE.MeshBasicMaterial({
+            color: 0xf59e0b,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9,
+            polygonOffset: true,
+            polygonOffsetFactor: -2,
+          })
+        )
+      );
+
+      const innerDiscGeo = new THREE.CircleGeometry(0.22, 32);
+      innerDiscGeo.rotateX(-Math.PI / 2);
+      reticleGroup.add(
+        new THREE.Mesh(
+          innerDiscGeo,
+          new THREE.MeshBasicMaterial({
+            color: 0xfef3c7,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.45,
+            polygonOffset: true,
+            polygonOffsetFactor: -2,
+          })
+        )
+      );
+
+      const beaconGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.65, 32, 1, true);
+      beaconGeo.translate(0, 0.325, 0);
+      reticleGroup.add(
+        new THREE.Mesh(
+          beaconGeo,
+          new THREE.MeshBasicMaterial({
+            color: 0xf59e0b,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.22,
+            depthWrite: false,
+          })
+        )
+      );
+
+      // WebXR Controllers + Laser Rays + Controller Models
+      const controllerModelFactory = new XRControllerModelFactory();
+      const raycaster = new THREE.Raycaster();
+      raycaster.near = 0.05;
+      raycaster.far = 100;
+
+      const controllers = [];
+      let validTeleportHit = null;
+      let activeAimingController = null;
+
+      const laserGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, -1),
+      ]);
+
+      for (let i = 0; i < 2; i++) {
+        const controller = renderer.xr.getController(i);
+        const laserMat = new THREE.LineBasicMaterial({
+          color: i === 0 ? 0x38bdf8 : 0xf59e0b,
+          transparent: true,
+          opacity: 0.85,
+        });
+        const laserLine = new THREE.Line(laserGeo, laserMat);
+        laserLine.scale.z = 12;
+        controller.add(laserLine);
+
+        const entry = { controller, laserLine, isSelecting: false };
+        controller.addEventListener('selectstart', () => {
+          entry.isSelecting = true;
+          activeAimingController = controller;
+          laserMat.color.setHex(0xfbbf24);
+        });
+        controller.addEventListener('selectend', () => {
+          entry.isSelecting = false;
+          laserMat.color.setHex(i === 0 ? 0x38bdf8 : 0xf59e0b);
+          if (activeAimingController === controller && validTeleportHit) {
+            targetDollyPos = null;
+            dolly.position.copy(validTeleportHit);
+            reticleGroup.visible = false;
+            validTeleportHit = null;
+          }
+          if (activeAimingController === controller) {
+            activeAimingController = null;
+            reticleGroup.visible = false;
+          }
+        });
+
+        dolly.add(controller);
+        controllers.push(entry);
+
+        const grip = renderer.xr.getControllerGrip(i);
+        grip.add(controllerModelFactory.createControllerModel(grip));
+        dolly.add(grip);
+      }
+
+      // ========================================================================
+      // 5. STATE, AUTO-MATERIALIZER FOR CLAY GLBS, AND BOUNDING BOX ALIGNMENT
+      // ========================================================================
+      const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
+      const proceduralTextures = createProceduralTextures(maxAnisotropy);
+
+      // Shared PBR materials for Auto-Texturing Untextured / Clay GLB meshes
+      const clayAutoMaterials = {
+        road: new THREE.MeshStandardMaterial({
+          map: proceduralTextures.asphaltRoad,
+          roughness: 0.88,
+          metalness: 0.05,
+          envMapIntensity: 0.25,
+        }),
+        lawn: new THREE.MeshStandardMaterial({
+          map: proceduralTextures.grassLawn,
+          roughness: 0.9,
+          metalness: 0.02,
+          envMapIntensity: 0.25,
+        }),
+        sidewalk: new THREE.MeshStandardMaterial({
+          map: proceduralTextures.concretePavers,
+          roughness: 0.75,
+          metalness: 0.04,
+          envMapIntensity: 0.3,
+        }),
+        siding: new THREE.MeshStandardMaterial({
+          map: proceduralTextures.brickSiding,
+          roughness: 0.78,
+          metalness: 0.04,
+          envMapIntensity: 0.35,
+        }),
+        stone: new THREE.MeshStandardMaterial({
+          map: proceduralTextures.stoneMasonry,
+          roughness: 0.85,
+          metalness: 0.04,
+          envMapIntensity: 0.35,
+        }),
+        roof: new THREE.MeshStandardMaterial({
+          map: proceduralTextures.roofShingles,
+          roughness: 0.82,
+          metalness: 0.06,
+          side: THREE.DoubleSide,
+          envMapIntensity: 0.35,
+        }),
+        foliage1: new THREE.MeshStandardMaterial({
+          color: 0x4d7e2b,
+          roughness: 0.82,
+          metalness: 0.02,
+          side: THREE.DoubleSide,
+          envMapIntensity: 0.3,
+        }),
+        foliage2: new THREE.MeshStandardMaterial({
+          color: 0x5f9436,
+          roughness: 0.82,
+          metalness: 0.02,
+          side: THREE.DoubleSide,
+          envMapIntensity: 0.3,
+        }),
+        bark: new THREE.MeshStandardMaterial({
+          color: 0x4e3928,
+          roughness: 0.9,
+          metalness: 0.02,
+          envMapIntensity: 0.25,
+        }),
+        trim: new THREE.MeshStandardMaterial({
+          color: 0xedeff2,
+          roughness: 0.45,
+          metalness: 0.05,
+          envMapIntensity: 0.35,
+        }),
+        glass: new THREE.MeshPhysicalMaterial({
+          color: 0x3b4d5e,
+          roughness: 0.12,
+          metalness: 0.15,
+          reflectivity: 0.9,
+          clearcoat: 0.8,
+          envMapIntensity: 0.65,
+        }),
+        water: new THREE.MeshPhysicalMaterial({
+          map: proceduralTextures.poolWater,
+          color: 0x38bdf8,
+          roughness: 0.1,
+          clearcoat: 1.0,
+        }),
+      };
+
+      let activeModel = null;
+      let walkableMeshes = [];
+      let lotWidth = 40;
+      let floorYOffset = 0;
+      let modelRotationDeg = 0;
+      let autoTextureClay = true;
+      let currentObjectUrl = null;
+      let cameraMode = 'orbit';
+      let targetDollyPos = null;
+      const targetLook = { yaw: 0, pitch: 0 };
+      const currentLook = { yaw: 0, pitch: 0 };
+
+      let rawBounds = {
+        sizeX: 40,
+        sizeY: 10.4,
+        sizeZ: 40,
+        centerX: 0,
+        centerZ: 0,
+        minY: -0.12,
+      };
+
+      function setStatus(type, text) {
+        const box = document.getElementById('status-box');
+        const txt = document.getElementById('status-text');
+        box.className = 'status-box ' + (type === 'info' ? '' : type);
+        txt.textContent = text;
+      }
+
+      /**
+       * Sanitizes loaded GLB materials and optionally applies realistic architectural
+       * materials if the GLB was exported as untextured white/clay meshes.
+       */
+      function processLoadedModelMaterials(model, enableClayAutoTexture) {
+        const uniqueTextures = new Set();
+        const meshBox = new THREE.Box3();
+        const meshSize = new THREE.Vector3();
+        const meshCenter = new THREE.Vector3();
+
+        let meshIdx = 0;
+        model.traverse((child) => {
+          if (!child.isMesh) return;
+          const mesh = child;
+          meshIdx++;
+
+          if (mesh.geometry && !mesh.geometry.attributes.normal) {
+            mesh.geometry.computeVertexNormals();
+          }
+
+          // Backup original material once so user can toggle Auto-Texture on/off
+          if (!mesh.userData.originalMaterial) {
+            mesh.userData.originalMaterial = mesh.material;
+          } else {
+            mesh.material = mesh.userData.originalMaterial;
+          }
+
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          let hasTextureOrColor = false;
+
+          mats.forEach((mat) => {
+            if (!mat) return;
+            if (mat.emissive && !mat.emissiveMap) {
+              if (mat.emissive.r > 0.02 || mat.emissive.g > 0.02 || mat.emissive.b > 0.02) {
+                mat.emissive.setHex(0x000000);
+                mat.emissiveIntensity = 0;
+              }
+            }
+            if (typeof mat.metalness === 'number' && !mat.metalnessMap && mat.metalness > 0.35) {
+              mat.metalness = 0.04;
+            }
+            if (typeof mat.roughness === 'number' && !mat.roughnessMap) {
+              if (mat.roughness < 0.15 || mat.roughness === 1.0) {
+                mat.roughness = 0.72;
+              }
+            }
+            if ('envMapIntensity' in mat) {
+              mat.envMapIntensity = 0.35;
+            }
+            if (mat.map) {
+              hasTextureOrColor = true;
+              uniqueTextures.add(mat.map);
+              mat.map.colorSpace = THREE.SRGBColorSpace;
+              mat.map.anisotropy = maxAnisotropy;
+              mat.map.needsUpdate = true;
+
+              const combinedName = `${mat.name || ''} ${mesh.name || ''}`.toLowerCase();
+              if (
+                mat.transparent ||
+                mat.alphaTest > 0 ||
+                /leaf|leaves|tree|foliage|plant|bush|alpha|fence/i.test(combinedName)
+              ) {
+                mat.alphaTest = Math.max(mat.alphaTest || 0, 0.35);
+                mat.side = THREE.DoubleSide;
+                mat.depthWrite = true;
+              }
+            } else if (mat.color) {
+              // Check if material has an intentional non-white/non-grey color
+              const { r, g, b } = mat.color;
+              const isNearWhiteOrGrey =
+                Math.abs(r - g) < 0.04 && Math.abs(g - b) < 0.04 && r > 0.65;
+              if (!isNearWhiteOrGrey) {
+                hasTextureOrColor = true;
+              }
+            }
+            mat.needsUpdate = true;
+          });
+
+          // If this mesh has no texture and is plain white/grey clay, and Auto-Texture is ON:
+          if (!hasTextureOrColor && enableClayAutoTexture) {
+            const firstMat = mats[0];
+            let label = `${mesh.name || ''} ${mesh.parent?.name || ''} ${firstMat?.name || ''}`.toLowerCase();
+
+            meshBox.setFromObject(mesh);
+            meshBox.getSize(meshSize);
+            meshBox.getCenter(meshCenter);
+
+            // Normalized height above model bottom (0..1) and horizontal footprint
+            const relMinY = meshBox.min.y - rawBounds.minY;
+            const relMaxY = meshBox.max.y - rawBounds.minY;
+            const normY = rawBounds.sizeY > 0 ? relMaxY / rawBounds.sizeY : 0;
+            const horizSpan = Math.max(meshSize.x, meshSize.z) / (rawBounds.sizeX || 1);
+            const vertSpan = meshSize.y / (rawBounds.sizeY || 1);
+
+            if (/leaf|leaves|foliage|canopy|crown|bush|shrub|hedge/i.test(label)) {
+              mesh.material = meshIdx % 2 === 0 ? clayAutoMaterials.foliage1 : clayAutoMaterials.foliage2;
+            } else if (/trunk|bark|branch|stem|tree_wood/i.test(label)) {
+              mesh.material = clayAutoMaterials.bark;
+            } else if (/road|street|asphalt|blacktop/i.test(label)) {
+              mesh.material = clayAutoMaterials.road;
+            } else if (/grass|lawn|turf|yard|ground/i.test(label)) {
+              mesh.material = clayAutoMaterials.lawn;
+            } else if (/sidewalk|paver|driveway|walkway|concrete|curb|step/i.test(label)) {
+              mesh.material = clayAutoMaterials.sidewalk;
+            } else if (/roof|shingle|tile|slate/i.test(label)) {
+              mesh.material = clayAutoMaterials.roof;
+            } else if (/stone|masonry|chimney/i.test(label)) {
+              mesh.material = clayAutoMaterials.stone;
+            } else if (/brick|siding|wall|facade/i.test(label)) {
+              mesh.material = clayAutoMaterials.siding;
+            } else if (/glass|pane|window_glass/i.test(label)) {
+              mesh.material = clayAutoMaterials.glass;
+            } else if (/pool|water/i.test(label)) {
+              mesh.material = clayAutoMaterials.water;
+            } else if (/window|shutter|trim|column|pillar|door|frame|railing|swing|garage/i.test(label)) {
+              mesh.material = clayAutoMaterials.trim;
+            } else {
+              // Spatial & geometric heuristics for unnamed clay meshes
+              if (normY < 0.045 && horizSpan > 0.35) {
+                if (horizSpan > 0.88) {
+                  mesh.material = clayAutoMaterials.road;
+                } else if (horizSpan > 0.55) {
+                  mesh.material = clayAutoMaterials.lawn;
+                } else {
+                  mesh.material = clayAutoMaterials.sidewalk;
+                }
+              } else if (normY < 0.06 && horizSpan > 0.08) {
+                mesh.material = clayAutoMaterials.sidewalk;
+              } else if (
+                // Tree canopy leaf meshes (many small elevated meshes in the yard)
+                normY > 0.22 &&
+                horizSpan < 0.08 &&
+                vertSpan < 0.08 &&
+                (meshCenter.x > rawBounds.centerX + rawBounds.sizeX * 0.05 ||
+                  meshCenter.x < rawBounds.centerX - rawBounds.sizeX * 0.2)
+              ) {
+                mesh.material =
+                  meshIdx % 2 === 0 ? clayAutoMaterials.foliage1 : clayAutoMaterials.foliage2;
+              } else if (
+                // Tree trunks in the yard
+                vertSpan > 0.18 &&
+                horizSpan < 0.18 &&
+                (meshCenter.x > rawBounds.centerX + rawBounds.sizeX * 0.08 ||
+                  meshCenter.x < rawBounds.centerX - rawBounds.sizeX * 0.22)
+              ) {
+                mesh.material = clayAutoMaterials.bark;
+              } else if (normY > 0.52 && vertSpan > 0.08 && horizSpan > 0.12) {
+                mesh.material = clayAutoMaterials.roof;
+              } else if (vertSpan > 0.16 && horizSpan > 0.1) {
+                mesh.material = clayAutoMaterials.siding;
+              } else {
+                mesh.material = clayAutoMaterials.trim;
+              }
+            }
+          }
+        });
+
+        return uniqueTextures.size;
+      }
+
+      function setupAndAlignModel(model, name, isCustomGlb) {
+        model.position.set(0, 0, 0);
+        model.rotation.set(0, THREE.MathUtils.degToRad(modelRotationDeg), 0);
+        model.scale.set(1, 1, 1);
+        model.updateMatrixWorld(true);
+
+        const box = new THREE.Box3().setFromObject(model);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+
+        const safeSizeX = size.x > 0.0001 ? size.x : 1;
+        rawBounds = {
+          sizeX: safeSizeX,
+          sizeY: size.y,
+          sizeZ: size.z,
+          centerX: center.x,
+          centerZ: center.z,
+          minY: box.min.y,
+        };
+
+        const texCount = isCustomGlb
+          ? processLoadedModelMaterials(model, autoTextureClay)
+          : 8;
+
+        const walkables = [];
+        let meshCount = 0;
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            walkables.push(child);
+            meshCount++;
+          }
+        });
+        walkableMeshes = walkables;
+
+        applyScaleAndOffset();
+
+        document.getElementById('metric-name').textContent = name;
+        document.getElementById('metric-counts').textContent = `${meshCount} meshes · ${texCount} tex`;
+        document.getElementById('btn-reset-proc').style.display = isCustomGlb
+          ? 'inline-flex'
+          : 'none';
+      }
+
+      function applyScaleAndOffset() {
+        if (!activeModel) return;
+
+        activeModel.position.set(0, 0, 0);
+        activeModel.rotation.set(0, THREE.MathUtils.degToRad(modelRotationDeg), 0);
+        activeModel.scale.set(1, 1, 1);
+        activeModel.updateMatrixWorld(true);
+
+        const box = new THREE.Box3().setFromObject(activeModel);
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size);
+        box.getCenter(center);
+
+        const safeSizeX = size.x > 0.0001 ? size.x : 1;
+        rawBounds = {
+          sizeX: safeSizeX,
+          sizeY: size.y,
+          sizeZ: size.z,
+          centerX: center.x,
+          centerZ: center.z,
+          minY: box.min.y,
+        };
+
+        const scaleFactor = lotWidth / safeSizeX;
+        activeModel.scale.setScalar(scaleFactor);
+        activeModel.position.set(
+          -center.x * scaleFactor,
+          -box.min.y * scaleFactor + floorYOffset,
+          -center.z * scaleFactor
+        );
+        activeModel.updateMatrixWorld(true);
+
+        const w = (safeSizeX * scaleFactor).toFixed(2);
+        const h = (size.y * scaleFactor).toFixed(2);
+        const d = (size.z * scaleFactor).toFixed(2);
+
+        document.getElementById('metric-w').textContent = `W: ${w}m`;
+        document.getElementById('metric-h').textContent = `H: ${h}m`;
+        document.getElementById('metric-d').textContent = `D: ${d}m`;
+
+        const maxExtent = Math.max(Number(w), Number(d)) * 0.75;
+        sunLight.shadow.camera.left = -maxExtent;
+        sunLight.shadow.camera.right = maxExtent;
+        sunLight.shadow.camera.top = maxExtent;
+        sunLight.shadow.camera.bottom = -maxExtent;
+        sunLight.shadow.camera.updateProjectionMatrix();
+      }
+
+      // Build and mount initial Procedural Urban House
+      const proceduralHouse = buildProceduralUrbanHouse(proceduralTextures);
+      scene.add(proceduralHouse);
+      activeModel = proceduralHouse;
+      setupAndAlignModel(proceduralHouse, 'Procedural Urban House', false);
+
+      // Setup GLTFLoader + DRACOLoader (1.5.7) + KTX2Loader
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+      dracoLoader.preload();
+
+      const ktx2Loader = new KTX2Loader();
+      ktx2Loader.setTranscoderPath(
+        'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/libs/basis/'
+      );
+      ktx2Loader.detectSupport(renderer);
+
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.setDRACOLoader(dracoLoader);
+      gltfLoader.setKTX2Loader(ktx2Loader);
+      registerGlbExtensionsPlugin(gltfLoader);
+
+      function loadGlbModel(url, displayName, isSilentStartup = false) {
+        const progTrack = document.getElementById('progress-track');
+        const progBar = document.getElementById('progress-bar');
+
+        if (!isSilentStartup) {
+          setStatus('info', `Loading "${displayName}"...`);
+          progTrack.style.display = 'block';
+          progBar.style.width = '12%';
+        }
+
+        gltfLoader.load(
+          url,
+          (gltf) => {
+            if (activeModel) scene.remove(activeModel);
+            activeModel = gltf.scene;
+            activeModel.name = displayName;
+            scene.add(activeModel);
+
+            setupAndAlignModel(activeModel, displayName, true);
+            jumpToViewpoint('overview');
+
+            progTrack.style.display = 'none';
+            setStatus(
+              'success',
+              `Loaded "${displayName}" — scaled to ${lotWidth}m width, floor aligned to y = 0.`
+            );
+          },
+          (xhr) => {
+            if (xhr.lengthComputable && xhr.total > 0) {
+              const pct = Math.round((xhr.loaded / xhr.total) * 100);
+              progBar.style.width = `${Math.max(10, pct)}%`;
+            }
+          },
+          (err) => {
+            progTrack.style.display = 'none';
+            if (!isSilentStartup) {
+              console.warn('GLB load error:', err);
+              setStatus(
+                'error',
+                `Could not load "${displayName}". Please select a valid .glb or .gltf file.`
+              );
+            }
+          }
+        );
+      }
+
+      // Automatically attempt to load './urban_house.glb' on startup if present
+      fetch('./urban_house.glb', { method: 'HEAD' })
+        .then((res) => {
+          const ct = res.headers.get('content-type') || '';
+          if (res.ok && !ct.includes('text/html')) {
+            loadGlbModel('./urban_house.glb', 'urban_house.glb', true);
+          }
+        })
+        .catch(() => {});
+
+      // ========================================================================
+      // 6. VIEWPOINT PRESETS & SURFACE HEIGHT RAYCASTING
+      // ========================================================================
+      const VIEWPOINTS = {
+        overview: {
+          mode: 'orbit',
+          pos: [18.5, 6.2, 26.5],
+          lookAt: [-1.0, 2.6, 0.0],
+        },
+        'front-street': {
+          mode: 'walk',
+          pos: [-3.5, 0.08, 18.5],
+          lookAt: [-2.5, 2.2, 0.0],
+        },
+        'front-porch': {
+          mode: 'walk',
+          pos: [-3.5, 0.45, 7.4],
+          lookAt: [-3.5, 1.8, 0.0],
+        },
+        driveway: {
+          mode: 'walk',
+          pos: [10.5, 0.08, 3.8],
+          lookAt: [0.0, 2.0, 1.2],
+        },
+        'backyard-pool': {
+          mode: 'walk',
+          pos: [-6.5, 0.12, -13.5],
+          lookAt: [0.0, 1.8, -4.0],
+        },
+      };
+
+      const downRaycaster = new THREE.Raycaster();
+      function findSurfaceYAt(x, z, fallbackY) {
+        if (walkableMeshes.length === 0) return fallbackY;
+        downRaycaster.set(
+          new THREE.Vector3(x, 30 + floorYOffset, z),
+          new THREE.Vector3(0, -1, 0)
+        );
+        downRaycaster.near = 0.1;
+        downRaycaster.far = 80;
+        const hits = downRaycaster.intersectObjects(walkableMeshes, true);
+        for (const hit of hits) {
+          if (hit.point.y <= 3.2 + floorYOffset) {
+            return hit.point.y;
+          }
+        }
+        return fallbackY;
+      }
+
+      function updateViewpointButtons(activeId) {
+        document.querySelectorAll('.vp-btn[data-vp]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-vp') === activeId);
+        });
+        document.getElementById('label-cam-mode').textContent =
+          cameraMode === 'orbit' ? 'Orbit Mode' : '1.6m Walk Mode';
+      }
+
+      function jumpToViewpoint(id) {
+        const vp = VIEWPOINTS[id];
+        if (!vp) return;
+        cameraMode = vp.mode;
+        updateViewpointButtons(id);
+
+        const scaleRatio = lotWidth / 40;
+        const px = vp.pos[0] * scaleRatio;
+        const pz = vp.pos[2] * scaleRatio;
+        const lx = vp.lookAt[0] * scaleRatio;
+        const ly = vp.lookAt[1] * scaleRatio + floorYOffset;
+        const lz = vp.lookAt[2] * scaleRatio;
+
+        if (vp.mode === 'orbit') {
+          orbitControls.enabled = true;
+          orbitCamera.position.set(px, vp.pos[1] * scaleRatio + floorYOffset, pz);
+          orbitControls.target.set(lx, ly, lz);
+          orbitControls.update();
+        } else {
+          orbitControls.enabled = false;
+          const surfY = findSurfaceYAt(px, pz, vp.pos[1] + floorYOffset);
+          targetDollyPos = new THREE.Vector3(px, surfY, pz);
+          const dx = lx - px;
+          const dy = ly - (surfY + 1.6);
+          const dz = lz - pz;
+          targetLook.yaw = Math.atan2(-dx, -dz);
+          targetLook.pitch = THREE.MathUtils.clamp(
+            Math.atan2(dy, Math.max(0.1, Math.hypot(dx, dz))),
+            -Math.PI / 3,
+            Math.PI / 3
+          );
+        }
+      }
+
+      // ========================================================================
+      // 7. DOM UI EVENT LISTENERS & DRAG-AND-DROP
+      // ========================================================================
+      const fileInput = document.getElementById('file-input');
+      document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
+
+      function handleLocalFile(file) {
+        if (!file) return;
+        const lower = file.name.toLowerCase();
+        if (!lower.endsWith('.glb') && !lower.endsWith('.gltf')) {
+          setStatus('error', 'Please select a valid .glb or .gltf 3D model file.');
+          return;
+        }
+        if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = URL.createObjectURL(file);
+        loadGlbModel(currentObjectUrl, file.name, false);
+      }
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) handleLocalFile(file);
+        fileInput.value = '';
+      });
+
+      document.getElementById('url-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const url = document.getElementById('url-input').value.trim();
+        if (url) {
+          const name = url.split('/').pop() || 'RemoteModel.glb';
+          loadGlbModel(url, name, false);
+        }
+      });
+
+      document.getElementById('btn-reset-proc').addEventListener('click', () => {
+        if (activeModel) scene.remove(activeModel);
+        activeModel = proceduralHouse;
+        scene.add(proceduralHouse);
+        setupAndAlignModel(proceduralHouse, 'Procedural Urban House', false);
+        jumpToViewpoint('overview');
+        setStatus('info', 'Restored procedural Urban House lot.');
+      });
+
+      const dropOverlay = document.getElementById('drop-overlay');
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropOverlay.classList.add('active');
+      });
+      window.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget === null) {
+          dropOverlay.classList.remove('active');
+        }
+      });
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropOverlay.classList.remove('active');
+        const file = e.dataTransfer?.files?.[0];
+        if (file) handleLocalFile(file);
+      });
+
+      // Collapse / Expand Inspector Panel
+      const panelBody = document.getElementById('panel-body');
+      const btnCollapse = document.getElementById('btn-collapse');
+      btnCollapse.addEventListener('click', () => {
+        const collapsed = panelBody.classList.toggle('collapsed');
+        btnCollapse.textContent = collapsed ? '▸' : '▾';
+      });
+
+      // Sliders: Lot Width, Floor Y-Offset, Exposure, Rotation, Auto-Texture
+      const sliderLotWidth = document.getElementById('slider-lot-width');
+      const valLotWidth = document.getElementById('val-lot-width');
+      sliderLotWidth.addEventListener('input', (e) => {
+        lotWidth = Number(e.target.value);
+        valLotWidth.textContent = `${lotWidth} m`;
+        applyScaleAndOffset();
+      });
+
+      const sliderFloorOffset = document.getElementById('slider-floor-offset');
+      const valFloorOffset = document.getElementById('val-floor-offset');
+      sliderFloorOffset.addEventListener('input', (e) => {
+        floorYOffset = Number(e.target.value);
+        valFloorOffset.textContent = `${floorYOffset >= 0 ? '+' : ''}${floorYOffset.toFixed(2)} m`;
+        applyScaleAndOffset();
+      });
+
+      const sliderExposure = document.getElementById('slider-exposure');
+      const valExposure = document.getElementById('val-exposure');
+      sliderExposure.addEventListener('input', (e) => {
+        const exp = Number(e.target.value);
+        renderer.toneMappingExposure = exp;
+        valExposure.textContent = `${exp.toFixed(2)}x`;
+      });
+
+      document.getElementById('btn-rotate-model').addEventListener('click', (e) => {
+        modelRotationDeg = (modelRotationDeg + 90) % 360;
+        e.currentTarget.textContent = `Rot: ${modelRotationDeg}°`;
+        applyScaleAndOffset();
+      });
+
+      document.getElementById('btn-reset-scale').addEventListener('click', () => {
+        lotWidth = 40;
+        floorYOffset = 0;
+        sliderLotWidth.value = '40';
+        sliderFloorOffset.value = '0';
+        valLotWidth.textContent = '40 m';
+        valFloorOffset.textContent = '+0.00 m';
+        applyScaleAndOffset();
+      });
+
+      const btnAutoTex = document.getElementById('btn-auto-texture');
+      const valAutoTex = document.getElementById('val-auto-texture');
+      btnAutoTex.addEventListener('click', () => {
+        autoTextureClay = !autoTextureClay;
+        btnAutoTex.classList.toggle('active-toggle', autoTextureClay);
+        valAutoTex.textContent = autoTextureClay ? 'ON' : 'OFF';
+        if (activeModel && activeModel !== proceduralHouse) {
+          processLoadedModelMaterials(activeModel, autoTextureClay);
+        }
+      });
+
+      document.querySelectorAll('.vp-btn[data-vp]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          jumpToViewpoint(btn.getAttribute('data-vp'));
+        });
+      });
+
+      const btnPointerLock = document.getElementById('btn-pointer-lock');
+      btnPointerLock.addEventListener('click', () => {
+        if (cameraMode === 'orbit') {
+          jumpToViewpoint('front-street');
+        }
+        if (document.pointerLockElement === renderer.domElement) {
+          document.exitPointerLock();
+        } else {
+          renderer.domElement.requestPointerLock?.();
+        }
+      });
+
+      document.addEventListener('pointerlockchange', () => {
+        const locked = document.pointerLockElement === renderer.domElement;
+        btnPointerLock.classList.toggle('active', locked);
+        btnPointerLock.textContent = locked ? 'Unlock Mouse' : 'FPS Mouse Lock';
+      });
+
+      // ========================================================================
+      // 8. DESKTOP KEYBOARD, MOUSE LOOK & DOUBLE-CLICK TELEPORTATION
+      // ========================================================================
+      const keysPressed = {};
+      let isDraggingLook = false;
+      let prevMouseX = 0;
+      let prevMouseY = 0;
+      const mouseNdc = new THREE.Vector2();
+
+      window.addEventListener('keydown', (e) => {
+        if (
+          document.activeElement &&
+          (document.activeElement.tagName === 'INPUT' ||
+            document.activeElement.tagName === 'TEXTAREA')
+        ) {
+          return;
+        }
+        keysPressed[e.code] = true;
+
+        if (
+          cameraMode === 'orbit' &&
+          (e.code === 'KeyW' || e.code === 'KeyS' || e.code === 'KeyA' || e.code === 'KeyD')
+        ) {
+          cameraMode = 'walk';
+          orbitControls.enabled = false;
+          updateViewpointButtons('');
+          const surfY = findSurfaceYAt(orbitCamera.position.x, orbitCamera.position.z, floorYOffset);
+          dolly.position.set(orbitCamera.position.x, surfY, orbitCamera.position.z);
+          const dx = orbitControls.target.x - orbitCamera.position.x;
+          const dz = orbitControls.target.z - orbitCamera.position.z;
+          const yaw = Math.atan2(-dx, -dz);
+          targetLook.yaw = yaw;
+          currentLook.yaw = yaw;
+          targetLook.pitch = 0;
+          currentLook.pitch = 0;
+        }
+
+        if (e.code === 'KeyQ') targetLook.yaw += Math.PI / 4;
+        if (e.code === 'KeyE') targetLook.yaw -= Math.PI / 4;
+      });
+
+      window.addEventListener('keyup', (e) => {
+        keysPressed[e.code] = false;
+      });
+
+      window.addEventListener('pointerdown', (e) => {
+        if (e.target !== renderer.domElement) return;
+        if (cameraMode === 'walk' && e.button === 0) {
+          isDraggingLook = true;
+          prevMouseX = e.clientX;
+          prevMouseY = e.clientY;
+        }
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (cameraMode !== 'walk') return;
+        if (document.pointerLockElement === renderer.domElement) {
+          targetLook.yaw -= e.movementX * 0.0022;
+          targetLook.pitch = THREE.MathUtils.clamp(
+            targetLook.pitch - e.movementY * 0.0022,
+            -Math.PI / 2.2,
+            Math.PI / 2.2
+          );
+        } else if (isDraggingLook) {
+          const dx = e.clientX - prevMouseX;
+          const dy = e.clientY - prevMouseY;
+          prevMouseX = e.clientX;
+          prevMouseY = e.clientY;
+          targetLook.yaw -= dx * 0.0032;
+          targetLook.pitch = THREE.MathUtils.clamp(
+            targetLook.pitch - dy * 0.0032,
+            -Math.PI / 2.2,
+            Math.PI / 2.2
+          );
+        }
+      });
+
+      window.addEventListener('pointerup', () => {
+        isDraggingLook = false;
+      });
+
+      window.addEventListener('dblclick', (e) => {
+        if (e.target !== renderer.domElement) return;
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouseNdc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouseNdc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        const activeCam = cameraMode === 'orbit' ? orbitCamera : walkCamera;
+        raycaster.setFromCamera(mouseNdc, activeCam);
+        const hits = raycaster.intersectObjects(walkableMeshes, true);
+        if (hits.length > 0) {
+          const hit = hits[0];
+          if (cameraMode === 'orbit') {
+            cameraMode = 'walk';
+            orbitControls.enabled = false;
+            updateViewpointButtons('');
+            const dx = hit.point.x - orbitCamera.position.x;
+            const dz = hit.point.z - orbitCamera.position.z;
+            const yaw = Math.atan2(-dx, -dz);
+            targetLook.yaw = yaw;
+            currentLook.yaw = yaw;
+            targetLook.pitch = 0;
+            currentLook.pitch = 0;
+            dolly.position.copy(hit.point);
+          } else {
+            targetDollyPos = hit.point.clone();
+          }
+
+          reticleGroup.position.copy(hit.point);
+          reticleGroup.position.y += 0.02;
+          reticleGroup.visible = true;
+          setTimeout(() => {
+            if (!activeAimingController) reticleGroup.visible = false;
+          }, 650);
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        const aspect = window.innerWidth / window.innerHeight;
+        walkCamera.aspect = aspect;
+        walkCamera.updateProjectionMatrix();
+        orbitCamera.aspect = aspect;
+        orbitCamera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // ========================================================================
+      // 9. WEBXR VR & DESKTOP RENDER LOOP
+      // ========================================================================
+      const clock = new THREE.Clock();
+      const _forward = new THREE.Vector3();
+      const _right = new THREE.Vector3();
+      const _moveVec = new THREE.Vector3();
+      const _rayOrigin = new THREE.Vector3();
+      const _rayDir = new THREE.Vector3();
+      const _tempMatrix = new THREE.Matrix4();
+      const _worldNormal = new THREE.Vector3();
+      const _normalMatrix = new THREE.Matrix3();
+      const _downOrigin = new THREE.Vector3();
+      const _downDir = new THREE.Vector3(0, -1, 0);
+      const _camQuat = new THREE.Quaternion();
+      const _euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+      let snapTurnReady = true;
+      let hudTimer = 0;
+      const elCoords = document.getElementById('metric-coords');
+      const elDockEye = document.getElementById('dock-eye-height');
+
+      renderer.setAnimationLoop(() => {
+        const delta = Math.min(clock.getDelta(), 0.1);
+        const isPresenting = renderer.xr.isPresenting;
+
+        if (isPresenting) {
+          // WebXR VR Locomotion: Left Stick Walk (3.5 m/s), Right Stick 45° Snap Turn, Trigger Teleport
+          const session = renderer.xr.getSession();
+          if (session) {
+            const xrCam = renderer.xr.getCamera();
+            xrCam.getWorldQuaternion(_camQuat);
+            _euler.setFromQuaternion(_camQuat, 'YXZ');
+
+            _forward.set(0, 0, -1).applyAxisAngle(THREE.Object3D.DEFAULT_UP, _euler.y).normalize();
+            _right.set(1, 0, 0).applyAxisAngle(THREE.Object3D.DEFAULT_UP, _euler.y).normalize();
+
+            for (const source of session.inputSources) {
+              if (!source.gamepad) continue;
+              const axes = source.gamepad.axes;
+              const stickX =
+                axes.length >= 4 && Math.abs(axes[2]) > Math.abs(axes[0])
+                  ? axes[2]
+                  : axes[0] ?? 0;
+              const stickY =
+                axes.length >= 4 && Math.abs(axes[3]) > Math.abs(axes[1])
+                  ? axes[3]
+                  : axes[1] ?? 0;
+
+              if (source.handedness === 'left') {
+                if (Math.abs(stickX) > 0.15 || Math.abs(stickY) > 0.15) {
+                  _moveVec
+                    .set(0, 0, 0)
+                    .addScaledVector(_forward, -stickY)
+                    .addScaledVector(_right, stickX);
+                  if (_moveVec.lengthSq() > 1) _moveVec.normalize();
+                  dolly.position.addScaledVector(_moveVec, 3.5 * delta);
+
+                  _downOrigin.set(dolly.position.x, dolly.position.y + 1.5, dolly.position.z);
+                  raycaster.set(_downOrigin, _downDir);
+                  raycaster.far = 3.0;
+                  const fHits = raycaster.intersectObjects(walkableMeshes, true);
+                  raycaster.far = 100;
+                  if (fHits.length > 0 && Math.abs(fHits[0].point.y - dolly.position.y) < 0.85) {
+                    dolly.position.y = THREE.MathUtils.damp(
+                      dolly.position.y,
+                      fHits[0].point.y,
+                      12,
+                      delta
+                    );
+                  }
+                }
+              } else if (source.handedness === 'right') {
+                if (Math.abs(stickX) > 0.65) {
+                  if (snapTurnReady) {
+                    dolly.rotation.y -= Math.sign(stickX) * (Math.PI / 4);
+                    snapTurnReady = false;
+                  }
+                } else if (Math.abs(stickX) < 0.25) {
+                  snapTurnReady = true;
+                }
+              }
+            }
+          }
+
+          const castCtrl =
+            activeAimingController || controllers[1]?.controller || controllers[0]?.controller;
+          if (castCtrl && walkableMeshes.length > 0) {
+            _tempMatrix.identity().extractRotation(castCtrl.matrixWorld);
+            _rayOrigin.setFromMatrixPosition(castCtrl.matrixWorld);
+            _rayDir.set(0, 0, -1).applyMatrix4(_tempMatrix).normalize();
+
+            raycaster.set(_rayOrigin, _rayDir);
+            const intersects = raycaster.intersectObjects(walkableMeshes, true);
+
+            let chosenHit = null;
+            for (const hit of intersects) {
+              if (hit.face) {
+                _normalMatrix.getNormalMatrix(hit.object.matrixWorld);
+                _worldNormal.copy(hit.face.normal).applyMatrix3(_normalMatrix).normalize();
+                if (_worldNormal.y > 0.35) {
+                  chosenHit = hit;
+                  break;
+                }
+              } else {
+                chosenHit = hit;
+                break;
+              }
+            }
+            if (!chosenHit && intersects.length > 0) chosenHit = intersects[0];
+
+            const entry = controllers.find((c) => c.controller === castCtrl);
+            if (chosenHit) {
+              if (entry) entry.laserLine.scale.z = chosenHit.distance;
+              if (activeAimingController) {
+                validTeleportHit = chosenHit.point.clone();
+                reticleGroup.position.copy(chosenHit.point);
+                reticleGroup.position.y += 0.02;
+                reticleGroup.visible = true;
+              }
+            } else {
+              if (entry) entry.laserLine.scale.z = 15;
+              if (activeAimingController) {
+                validTeleportHit = null;
+                reticleGroup.visible = false;
+              }
+            }
+          }
+
+          renderer.render(scene, walkCamera);
+        } else if (cameraMode === 'orbit') {
+          orbitControls.update();
+          hudTimer += delta;
+          if (hudTimer > 0.25) {
+            hudTimer = 0;
+            const p = orbitCamera.position;
+            elCoords.textContent = `(${p.x.toFixed(1)}m, ${p.y.toFixed(1)}m, ${p.z.toFixed(1)}m)`;
+            elDockEye.textContent = `Eye: ${p.y.toFixed(2)}m (Orbit)`;
+          }
+          renderer.render(scene, orbitCamera);
+        } else {
+          currentLook.yaw = THREE.MathUtils.damp(currentLook.yaw, targetLook.yaw, 14, delta);
+          currentLook.pitch = THREE.MathUtils.damp(currentLook.pitch, targetLook.pitch, 14, delta);
+          dolly.rotation.y = currentLook.yaw;
+          walkCamera.rotation.x = currentLook.pitch;
+
+          const moveF =
+            (keysPressed['KeyW'] || keysPressed['ArrowUp'] ? 1 : 0) -
+            (keysPressed['KeyS'] || keysPressed['ArrowDown'] ? 1 : 0);
+          const moveS =
+            (keysPressed['KeyD'] || keysPressed['ArrowRight'] ? 1 : 0) -
+            (keysPressed['KeyA'] || keysPressed['ArrowLeft'] ? 1 : 0);
+
+          if (moveF !== 0 || moveS !== 0) {
+            targetDollyPos = null;
+            const speed =
+              keysPressed['ShiftLeft'] || keysPressed['ShiftRight'] ? 7.0 : 3.5;
+
+            _forward
+              .set(0, 0, -1)
+              .applyAxisAngle(THREE.Object3D.DEFAULT_UP, dolly.rotation.y)
+              .normalize();
+            _right
+              .set(1, 0, 0)
+              .applyAxisAngle(THREE.Object3D.DEFAULT_UP, dolly.rotation.y)
+              .normalize();
+
+            _moveVec
+              .set(0, 0, 0)
+              .addScaledVector(_forward, moveF)
+              .addScaledVector(_right, moveS)
+              .normalize();
+
+            dolly.position.addScaledVector(_moveVec, speed * delta);
+
+            _downOrigin.set(dolly.position.x, dolly.position.y + 1.8, dolly.position.z);
+            raycaster.set(_downOrigin, _downDir);
+            raycaster.far = 3.5;
+            const fHits = raycaster.intersectObjects(walkableMeshes, true);
+            raycaster.far = 100;
+            if (fHits.length > 0 && Math.abs(fHits[0].point.y - dolly.position.y) < 1.1) {
+              dolly.position.y = THREE.MathUtils.damp(
+                dolly.position.y,
+                fHits[0].point.y,
+                10,
+                delta
+              );
+            }
+          } else if (targetDollyPos) {
+            dolly.position.x = THREE.MathUtils.damp(dolly.position.x, targetDollyPos.x, 8, delta);
+            dolly.position.y = THREE.MathUtils.damp(dolly.position.y, targetDollyPos.y, 8, delta);
+            dolly.position.z = THREE.MathUtils.damp(dolly.position.z, targetDollyPos.z, 8, delta);
+            if (dolly.position.distanceToSquared(targetDollyPos) < 0.002) {
+              targetDollyPos = null;
+            }
+          }
+
+          hudTimer += delta;
+          if (hudTimer > 0.25) {
+            hudTimer = 0;
+            const p = dolly.position;
+            elCoords.textContent = `(${p.x.toFixed(1)}m, ${p.y.toFixed(2)}m, ${p.z.toFixed(1)}m)`;
+            elDockEye.textContent = `Eye: ${(p.y + 1.6).toFixed(2)}m`;
+          }
+
+          renderer.render(scene, walkCamera);
+        }
+      });
+    </script>
   </body>
 </html>
