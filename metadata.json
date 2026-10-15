@@ -1,0 +1,6 @@
+{
+  "name": "Urban House WebXR Architectural Tour",
+  "description": "Single-page Three.js WebXR VR architectural walkthrough and GLB model inspector with real-world 1:1 meter scaling, VR controller teleportation, thumbstick locomotion, and desktop WASD controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
