@@ -180,12 +180,18 @@
       scene.fog = new THREE.FogExp2(0x060913, 0.022);
 
       // Camera
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 120);
+      const camera = new THREE.PerspectiveCamera(
+	  70, // or 75
+	  window.innerWidth / window.innerHeight,
+ 	  0.1, // Change near clipping plane to 0.05 or keep small
+	  1000
+      );
 
       // Camera Dolly (WebXR Rig): The camera is child to the dolly.
       // Modifying dolly.position moves the player without interfering with head tracking.
       cameraDolly = new THREE.Group();
-      cameraDolly.position.set(0, 0, 10);
+      // Raise the starting position so the camera looks over the courtyard
+      cameraDolly.position.set(0, 1.8, 12); // Lift Y to ~1.8m (eye level) and pull back Z to ~12m
       cameraDolly.add(camera);
       scene.add(cameraDolly);
 
@@ -294,6 +300,7 @@
 
       const floorMesh = new THREE.Mesh(floorGeo, floorMat);
       floorMesh.receiveShadow = true;
+      floorMesh.position.y = -0.5; // or groundMesh.position.y = -0.5
       scene.add(floorMesh);
 
       // 2. Minimalist Architectural Columns (Symmetric colonnade)
